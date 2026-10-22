@@ -1,0 +1,10 @@
+# Rotation des journaux du pipeline. Copier dans /etc/logrotate.d/mosip-bi.
+/var/log/mosip-bi/*.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

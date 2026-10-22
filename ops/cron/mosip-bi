@@ -1,0 +1,20 @@
+# Tâches planifiées du pipeline BI MOSIP. Copier dans /etc/cron.d/mosip-bi (root, mode 644).
+# Heures en UTC, qui est aussi l'heure locale à Lomé.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Adresse qui reçoit les alertes du contrôle de santé (demande un agent de messagerie sur le serveur)
+MAILTO=""
+B=/data/mosip-cdc
+L=/var/log/mosip-bi
+
+# Data warehouse, data mart et publication pour l'API, toutes les 15 minutes
+*/15 * * * *  root  flock -n /tmp/mosip-analytique.lock $B/scripts/run-analytique.sh >> $L/analytique.log 2>&1
+
+# Indicateurs en direct, chaque minute
+* * * * *     root  flock -n /tmp/mosip-direct.lock $B/scripts/rafraichir-direct.sh >> $L/direct.log 2>&1
+
+# Contrôle de santé, toutes les 5 minutes (alertes dans $L/alertes.log)
+*/5 * * * *   root  $B/scripts/check-health.sh
+
+# Fraîcheur des données capturées, toutes les heures
+5 * * * *     root  cd $B/compose && docker compose run --rm -T dbt source freshness >> $L/freshness.log 2>&1
