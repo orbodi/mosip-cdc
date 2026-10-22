@@ -1,0 +1,92 @@
+services:
+  kafka:
+    image: apache/kafka:4.1.0
+    container_name: mosip-cdc-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - /data/mosip-cdc/kafka/data:/var/lib/kafka/data
+    networks:
+      - mosip-cdc-net
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  connect:
+    image: quay.io/debezium/connect:3.3.2.Final
+    container_name: mosip-cdc-connect
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: mosip-cdc-connect-cluster
+      CONFIG_STORAGE_TOPIC: mosip-cdc-connect-configs
+      OFFSET_STORAGE_TOPIC: mosip-cdc-connect-offsets
+      STATUS_STORAGE_TOPIC: mosip-cdc-connect-status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_PARTITIONS: 1
+      STATUS_STORAGE_PARTITIONS: 1
+      REST_ADVERTISED_HOST_NAME: connect
+      REST_PORT: 8083
+    ports:
+      - "127.0.0.1:8083:8083"
+    networks:
+      - mosip-cdc-net
+
+  debezium-ui:
+    image: quay.io/debezium/debezium-ui:latest
+    container_name: mosip-cdc-debezium-ui
+    restart: unless-stopped
+    depends_on:
+      - connect
+    environment:
+      KAFKA_CONNECT_URIS: http://connect:8083
+    ports:
+      - "8086:8080"
+    networks:
+      - mosip-cdc-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: mosip-cdc-ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+      - connect
+    environment:
+      KAFKA_CLUSTERS_0_NAME: mosip-cdc
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+    ports:
+      - "8085:8080"
+    networks:
+      - mosip-cdc-net
+
+networks:
+  mosip-cdc-net:
+    name: mosip-cdc-net
+    driver: bridge
