@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_prereg__applicant_demographic_events
+    description: "Journal des événements, typé et sans doublon. Une ligne par changement."
+    columns:
+      - name: event_id
+        description: "prereg_id:lsn:op, identifiant unique d'un événement."
+        data_tests:
+          - unique
+          - not_null
+      - name: prereg_id
+        data_tests:
+          - not_null
+      - name: cdc_op
+        description: "r (snapshot), c (création), u (modification), d (suppression)."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['r', 'c', 'u', 'd']
+
+  - name: stg_prereg__applicant_demographic
+    description: "État courant. Une ligne par dossier, suppressions marquées."
+    columns:
+      - name: prereg_id
+        data_tests:
+          - unique
+          - not_null
+      - name: status_code
+        description: "Doit exister dans dim_statut ; un nouveau statut MOSIP lève une alerte."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_statut')
+                field: status_code
+              config:
+                severity: warn
+
+  - name: stg_prereg__applicant_demographic_status_history
+    description: "Une ligne par période de statut."
+    columns:
+      - name: prereg_id
+        data_tests:
+          - not_null
+      - name: valid_from
+        data_tests:
+          - not_null

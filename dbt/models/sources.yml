@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: lake
+    description: "Data lake : une ligne par changement capturé dans MOSIP (connecteur lake-prereg)."
+    schema: lake
+    tables:
+      - name: mosip_prereg_applicant_demographic
+        description: "Tous les changements de prereg.applicant_demographic, jamais modifiés."
+        loaded_at_field: "to_timestamp(__source_ts_ms / 1000.0)"
+        freshness:
+          warn_after: {count: 6, period: hour}
+          error_after: {count: 24, period: hour}

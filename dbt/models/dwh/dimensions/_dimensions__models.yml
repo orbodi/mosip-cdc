@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: "Axe du temps : un jour par ligne."
+    columns:
+      - name: date_key
+        description: "Jour au format AAAAMMJJ."
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_statut
+    description: "Libellés et ordre d'affichage des statuts MOSIP."
+    columns:
+      - name: status_code
+        data_tests:
+          - unique
+          - not_null
