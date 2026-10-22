@@ -45,3 +45,7 @@ models:
       - name: valid_from
         data_tests:
           - not_null
+      - name: date_estimee
+        description: "true si la date vient du snapshot (estimée par upd_dtimes), false si elle a été observée."
+        data_tests:
+          - not_null

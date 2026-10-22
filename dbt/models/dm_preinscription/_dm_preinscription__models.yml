@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: fct_preinscription
+    description: "Une ligne par dossier : statut actuel, dates clés, délai de réservation."
+    columns:
+      - name: prereg_id
+        data_tests:
+          - unique
+          - not_null
+      - name: date_creation_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: status_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_statut')
+                field: status_code
+              config:
+                severity: warn
+      - name: delai_reservation_min
+        description: "Minutes entre création et première réservation, si elle a été observée."
+
+  - name: ind_preinscription_jour
+    description: "Indicateurs publiés : une ligne par jour de création et par langue (index unique)."
+    columns:
+      - name: date_jour
+        data_tests:
+          - not_null
+      - name: nb_crees
+        data_tests:
+          - not_null
