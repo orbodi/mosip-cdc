@@ -96,3 +96,9 @@ metastore_db/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ==========================================
+# DBT
+# ==========================================
+dbt/target/
+dbt/dbt_packages/

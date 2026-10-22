@@ -86,6 +86,19 @@ services:
     networks:
       - mosip-cdc-net
 
+  dbt:
+    build: ./dbt-image
+    image: mosip-cdc-dbt:1.11
+    profiles: ["tools"]
+    environment:
+      DBT_PROFILES_DIR: /usr/app
+      TRAITEMENT_PG_HOST: ${TRAITEMENT_PG_HOST}
+      DBT_PASSWORD: ${DBT_PASSWORD}
+    volumes:
+      - ../dbt:/usr/app
+    networks:
+      - mosip-cdc-net
+
 networks:
   mosip-cdc-net:
     name: mosip-cdc-net

@@ -1,0 +1,26 @@
+name: mosip_bi
+version: "1.0.0"
+config-version: 2
+profile: mosip_bi
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  mosip_bi:
+    dwh:
+      +schema: dwh
+      +materialized: table
+      dimensions:
+        +grants: {select: ['publisher_ro']}
+    dm_preinscription:
+      +schema: dm_preinscription
+      +materialized: table
+      ind_preinscription_jour:
+        +grants: {select: ['publisher_ro']}
+
+seeds:
+  mosip_bi:
+    +schema: dwh

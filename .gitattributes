@@ -1,0 +1,3 @@
+# Fins de ligne LF dans le depot et a l'extraction, y compris sous Windows :
+# les fichiers sont executes sur un serveur Linux.
+* text=auto eol=lf

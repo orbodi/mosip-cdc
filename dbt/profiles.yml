@@ -1,0 +1,12 @@
+mosip_bi:
+  target: prod
+  outputs:
+    prod:
+      type: postgres
+      host: "{{ env_var('TRAITEMENT_PG_HOST') }}"
+      port: 5432
+      user: dbt_runner
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: mosip_bi
+      schema: dwh
+      threads: 4
