@@ -7,6 +7,7 @@
     snapshot du 21/10/2026, dont l'heure de réservation n'est pas connue.
   - historique_complet : le dossier a été créé après le début de la capture ; tout son
     parcours est connu.
+  - sexe : F ou H d'après l'API de pré-inscription ; I tant que le dossier n'est pas enrichi.
 -#}
 {{ config(indexes=[
     {'columns': ['prereg_id'], 'unique': True},
@@ -37,6 +38,7 @@ select
     e.prereg_id,
     cast(to_char(e.created_at at time zone 'UTC', 'YYYYMMDD') as integer)   as date_creation_key,
     e.status_code,
+    coalesce(en.sexe, 'I')                                                  as sexe,
     e.lang_code                                                             as langue,
     e.is_deleted                                                            as est_supprime,
     e.created_at                                                            as cree_le,
@@ -49,3 +51,4 @@ select
     coalesce(p.nb_changements_statut, 0)                                    as nb_changements_statut
 from etat e
 left join parcours p using (prereg_id)
+left join {{ ref('stg_prereg__enrichissement') }} en using (prereg_id)

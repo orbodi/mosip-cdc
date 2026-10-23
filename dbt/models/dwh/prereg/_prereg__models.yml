@@ -49,3 +49,16 @@ models:
         description: "true si la date vient du snapshot (estimée par upd_dtimes), false si elle a été observée."
         data_tests:
           - not_null
+
+  - name: stg_prereg__enrichissement
+    description: "Dernier enrichissement de chaque dossier par l'API de pré-inscription (champs extraits seulement)."
+    columns:
+      - name: prereg_id
+        data_tests:
+          - unique
+          - not_null
+      - name: sexe
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['F', 'H', 'I']

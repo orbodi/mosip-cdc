@@ -12,8 +12,8 @@ psql -h "$TRAITEMENT_PG_HOST" -U publisher -d mosip_bi -v ON_ERROR_STOP=1 -q <<'
 BEGIN;
 -- Contrat du backend (tables créées par Flyway, propriétaire bi_owner)
 DELETE FROM bi.fait_preinscription_jour;
-INSERT INTO bi.fait_preinscription_jour (jour, statut, demandes, consommees)
-SELECT jour, statut, demandes, consommees FROM dm_preinscription.fait_preinscription_jour;
+INSERT INTO bi.fait_preinscription_jour (jour, statut, sexe, demandes, consommees)
+SELECT jour, statut, sexe, demandes, consommees FROM dm_preinscription.fait_preinscription_jour;
 INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
 SELECT 'preinscription', 'Pré-inscription', 6, premiere_donnee, derniere_donnee, now()
 FROM dm_preinscription.fraicheur_preinscription
