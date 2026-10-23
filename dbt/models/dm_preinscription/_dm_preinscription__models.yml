@@ -35,3 +35,26 @@ models:
       - name: nb_crees
         data_tests:
           - not_null
+
+  - name: fait_preinscription_jour
+    description: "Contrat bi.fait_preinscription_jour : une ligne par jour de création et statut regroupé."
+    columns:
+      - name: jour
+        data_tests:
+          - not_null
+      - name: statut
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['en_attente', 'reservee', 'expiree', 'annulee', 'non_classe']
+      - name: demandes
+        data_tests:
+          - not_null
+
+  - name: fraicheur_preinscription
+    description: "Bornes des données publiées dans bi.source_fraicheur (une ligne)."
+    columns:
+      - name: derniere_donnee
+        data_tests:
+          - not_null

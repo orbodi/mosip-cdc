@@ -1,0 +1,57 @@
+# Tableau de bord BI : API Spring Boot et interface React du dépôt orbodi/mosip-bi-reporting
+# (branche dashboard, clonée dans DASHBOARD_DIR), branchées sur la base mosip_bi.
+#
+#   docker compose -f docker-compose.dashboard.yml up -d
+#   docker compose -f docker-compose.dashboard.yml logs -f api
+#
+#   Interface : http://<FRONT_HOTE>:5173/enrolement
+#   API       : http://<FRONT_HOTE>:8080/swagger-ui.html
+#
+# Au démarrage, Flyway (rôle bi_owner) crée ou met à jour les schémas bi, etat et pipeline.
+# L'API lit avec api_reader (lecture seule). Keycloak désactivé : réseau interne seulement.
+name: mosip-bi-dashboard
+
+services:
+  api:
+    image: maven:3.9-eclipse-temurin-21
+    container_name: mosip-bi-api
+    restart: unless-stopped
+    working_dir: /backend
+    command: ["mvn", "-q", "spring-boot:run"]
+    environment:
+      BI_DB_URL: jdbc:postgresql://${TRAITEMENT_PG_HOST}:5432/mosip_bi
+      BI_DB_USER: api_reader
+      BI_DB_PASSWORD: ${API_READER_PASSWORD}
+      SPRING_FLYWAY_USER: bi_owner
+      SPRING_FLYWAY_PASSWORD: ${BI_OWNER_PASSWORD}
+      BI_SECURITE_ACTIVE: "false"
+      BI_ORIGINES_AUTORISEES: http://${FRONT_HOTE:-localhost}:${FRONT_PORT:-5173}
+      TZ: UTC
+    volumes:
+      - ${DASHBOARD_DIR:-/data/mosip-bi-reporting}/backend:/backend
+      - cache-maven:/root/.m2
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+  front:
+    image: node:22-alpine
+    container_name: mosip-bi-front
+    restart: unless-stopped
+    working_dir: /frontend
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]
+    environment:
+      API_PROXY_CIBLE: http://api:8080
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: ${FRONT_HOTE:-}
+    volumes:
+      - ${DASHBOARD_DIR:-/data/mosip-bi-reporting}/frontend:/frontend
+      - modules-front:/frontend/node_modules
+    ports:
+      - "${FRONT_PORT:-5173}:5173"
+    depends_on:
+      - api
+
+volumes:
+  cache-maven:
+    name: bi-anid_cache-maven
+  modules-front:
+    name: bi-anid_modules-front

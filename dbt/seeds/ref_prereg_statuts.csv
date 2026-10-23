@@ -1,6 +1,6 @@
-status_code,libelle,ordre,est_final
-Pending_Appointment,En attente de rendez-vous,1,false
-Booked,Rendez-vous réservé,2,false
-Consumed,Utilisée au centre,3,true
-Expired,Expirée,4,true
-Cancelled,Annulée,5,true
+status_code,libelle,ordre,est_final,statut_regroupe
+Pending_Appointment,En attente de rendez-vous,1,false,en_attente
+Booked,Rendez-vous réservé,2,false,reservee
+Consumed,Utilisée au centre,3,true,
+Expired,Expirée,4,true,expiree
+Cancelled,Annulée,5,true,annulee
