@@ -7,8 +7,9 @@ MAILTO=""
 B=/data/mosip-cdc
 L=/var/log/mosip-bi
 
-# Data warehouse, data mart et publication pour l'API, toutes les 5 minutes (sauté si le précédent tourne encore)
-*/5 * * * *   root  flock -n /tmp/mosip-analytique.lock $B/scripts/run-analytique.sh >> $L/analytique.log 2>&1
+# Data warehouse, data mart et publication pour l'API, toutes les 5 minutes (le script saute son tour si le
+# précédent tourne encore)
+*/5 * * * *   root  $B/scripts/run-analytique.sh >> $L/analytique.log 2>&1
 
 # Indicateurs en direct, chaque minute
 * * * * *     root  flock -n /tmp/mosip-direct.lock $B/scripts/rafraichir-direct.sh >> $L/direct.log 2>&1
