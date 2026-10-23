@@ -19,6 +19,9 @@ API_DELAI_S = float(os.environ.get("API_DELAI_S", "10"))          # délai maxim
 API_ESSAIS = int(os.environ.get("API_ESSAIS", "3"))                # tentatives avant de déclarer un échec
 JETON_RENOUVELLEMENT_S = int(os.environ.get("API_JETON_RENOUVELLEMENT_S", "32400"))  # 9 h (jeton valable 10 h)
 
+# BD traitement : le rattrapage y lit l'ODS (rôle spark_reader)
+TRAITEMENT_JDBC = f"jdbc:postgresql://{os.environ.get('TRAITEMENT_PG_HOST', 'localhost')}:5432/mosip_bi"
+
 # Job en continu : les nouveaux dossiers sont peu nombreux, un faible débit suffit
 FLUX_APPELS_SIMULTANES = int(os.environ.get("FLUX_APPELS_SIMULTANES", "4"))
 FLUX_DEBIT_MAX = float(os.environ.get("FLUX_DEBIT_MAX", "5"))     # appels par seconde

@@ -127,6 +127,26 @@ services:
     networks:
       - mosip-cdc-net
 
+  spark-batch:
+    image: mosip-cdc-spark:4.0.2
+    profiles: ["tools"]
+    environment:
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: "1"
+      API_URL: ${API_URL}
+      API_APP_ID: ${API_APP_ID}
+      API_CLIENT_ID: ${API_CLIENT_ID}
+      API_SECRET_KEY: ${API_SECRET_KEY}
+      API_TLS_VERIFY: ${API_TLS_VERIFY:-false}
+      TRAITEMENT_PG_HOST: ${TRAITEMENT_PG_HOST}
+      SPARK_READER_PASSWORD: ${SPARK_READER_PASSWORD}
+    volumes:
+      - ../spark:/app:ro
+      - ./certs:/certs:ro
+      - /data/mosip-cdc/spark/ivy:/opt/spark/ivy
+    networks:
+      - mosip-cdc-net
+
 networks:
   mosip-cdc-net:
     name: mosip-cdc-net

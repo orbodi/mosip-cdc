@@ -16,5 +16,10 @@ L=/var/log/mosip-bi
 # Contrôle de santé, toutes les 5 minutes (alertes dans $L/alertes.log)
 */5 * * * *   root  $B/scripts/check-health.sh
 
+# Rattrapage de l'enrichissement du stock : nuit 20 h 05 - 5 h à 32 appels/s, jour 5 h 05 - 20 h à 8 appels/s.
+# Chaque lancement s'arrête à son heure de fin ; le suivant reprend les dossiers encore sans réponse.
+5 20 * * *    root  cd $B/compose && flock -n /tmp/mosip-rattrapage.lock docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[4] --driver-memory 2g /app/jobs/rattrapage_stock.py --debit 32 --simultanes 16 --fin 05:00 >> $L/rattrapage.log 2>&1
+5 5 * * *     root  cd $B/compose && flock -n /tmp/mosip-rattrapage.lock docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[2] --driver-memory 2g /app/jobs/rattrapage_stock.py --debit 8 --simultanes 4 --fin 20:00 >> $L/rattrapage.log 2>&1
+
 # Fraîcheur des données capturées, toutes les heures
 5 * * * *     root  cd $B/compose && docker compose run --rm -T dbt source freshness >> $L/freshness.log 2>&1
