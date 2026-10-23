@@ -24,3 +24,13 @@ models:
       - name: location_code
         data_tests:
           - not_null
+
+  - name: stg_master__dynamic_field_valeurs
+    description: "Listes de valeurs MOSIP (genre, nationalité…) : une ligne par champ et code, libellé français."
+    columns:
+      - name: code
+        data_tests:
+          - not_null
+      - name: libelle
+        data_tests:
+          - not_null

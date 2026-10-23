@@ -6,6 +6,8 @@
     centre rattaché au pays, va sous HORS_REFERENTIEL (zone créée par le backend).
   - nom : libellé de seeds/ref_zone_libelles.csv s'il existe ; sinon le nom MOSIP, en majuscules initiales pour
     les lieux, tel quel pour les centres (sigles EPP, EPC…).
+  - seeds/ref_zone_corrections.csv : erreurs connues de MOSIP, en attendant leur correction à la source
+    (parent corrigé, ou zone masquée). Les zones rattachées à une zone masquée passent sous HORS_REFERENTIEL.
 -#}
 {{ config(indexes=[{'columns': ['code'], 'unique': True}]) }}
 
@@ -37,11 +39,15 @@ select
     z.niveau,
     coalesce(l.nom, z.nom, z.code)                  as nom,
     case
-        when z.niveau = 'region' then null
-        when p.code is not null  then p.code
+        when z.niveau = 'region'        then null
+        when c.parent_code is not null  then c.parent_code
+        when p.code is not null and not coalesce(pc.masquer, false) then p.code
         else 'HORS_REFERENTIEL'
     end                                             as parent_code,
     0                                               as ordre
 from zones z
 left join lieux p on p.code = z.parent_loc_code
 left join {{ ref('ref_zone_libelles') }} l on l.code = z.code
+left join {{ ref('ref_zone_corrections') }} c on c.code = z.code
+left join {{ ref('ref_zone_corrections') }} pc on pc.code = p.code
+where not coalesce(c.masquer, false)

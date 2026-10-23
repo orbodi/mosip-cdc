@@ -8,6 +8,10 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 clean-targets: ["target", "dbt_packages"]
 
+vars:
+  # Listes de valeurs de master.dynamic_field lues par stg_master__dynamic_field_valeurs
+  champs_dynamiques: ['gender', 'nationality', 'nationality-code']
+
 models:
   mosip_bi:
     dwh:
@@ -28,3 +32,5 @@ models:
 seeds:
   mosip_bi:
     +schema: dwh
+    ref_zone_corrections:
+      +column_types: {code: text, parent_code: text, masquer: boolean, motif: text}
