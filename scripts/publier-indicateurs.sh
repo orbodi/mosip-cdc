@@ -10,6 +10,19 @@ export PGPASSWORD="$PUBLISHER_PASSWORD"
 
 psql -h "$TRAITEMENT_PG_HOST" -U publisher -d mosip_bi -v ON_ERROR_STOP=1 -q <<'SQL'
 BEGIN;
+-- Référentiel : bi.zone, niveau par niveau (le parent est déjà en place)
+\set n region
+\i sql/publication/zone_niveau.sql
+\set n prefecture
+\i sql/publication/zone_niveau.sql
+\set n commune
+\i sql/publication/zone_niveau.sql
+\set n canton
+\i sql/publication/zone_niveau.sql
+\set n localite
+\i sql/publication/zone_niveau.sql
+\set n centre
+\i sql/publication/zone_niveau.sql
 -- Contrat du backend (tables créées par Flyway, propriétaire bi_owner)
 DELETE FROM bi.fait_preinscription_jour;
 INSERT INTO bi.fait_preinscription_jour (jour, statut, sexe, demandes, consommees)

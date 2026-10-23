@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_master__location
+    description: "Lieux MOSIP, du pays (niveau vide) à la localité."
+    columns:
+      - name: code
+        data_tests:
+          - unique
+          - not_null
+      - name: niveau
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['region', 'prefecture', 'commune', 'canton', 'localite']
+
+  - name: stg_master__registration_center
+    description: "Centres d'enrôlement MOSIP (sans contacts)."
+    columns:
+      - name: id
+        data_tests:
+          - unique
+          - not_null
+      - name: location_code
+        data_tests:
+          - not_null

@@ -10,7 +10,8 @@ ALERTES=/var/log/mosip-bi/alertes.log
 alerte() { echo "ALERTE $*"; echo "$(date '+%F %T') $*" >> "$ALERTES"; }
 
 # 1. Connecteurs Kafka Connect : connecteur et tâches en RUNNING
-for c in mosip-prereg-cdc lake-prereg ods-prereg lake-enrichissement ods-enrichissement; do
+for c in mosip-prereg-cdc lake-prereg ods-prereg lake-enrichissement ods-enrichissement \
+         mosip-master-cdc lake-master; do
   etat=$(curl -s --max-time 10 "http://localhost:8083/connectors/$c/status" \
     | jq -r '([.connector.state] + [.tasks[].state]) | unique | join(",")' 2>/dev/null)
   [ "$etat" = "RUNNING" ] || alerte "connecteur $c : ${etat:-injoignable}"

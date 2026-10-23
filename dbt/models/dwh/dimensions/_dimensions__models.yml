@@ -17,3 +17,28 @@ models:
         data_tests:
           - unique
           - not_null
+
+  - name: dim_zone
+    description: "Territoire publié dans bi.zone : de la région au centre d'enrôlement."
+    columns:
+      - name: code
+        data_tests:
+          - unique
+          - not_null
+      - name: niveau
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['region', 'prefecture', 'commune', 'canton', 'localite', 'centre']
+      - name: nom
+        data_tests:
+          - not_null
+      - name: parent_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: code
+              config:
+                where: "parent_code <> 'HORS_REFERENTIEL'"

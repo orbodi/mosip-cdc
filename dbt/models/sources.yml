@@ -13,3 +13,9 @@ sources:
           error_after: {count: 24, period: hour}
       - name: mosip_prereg_enrichissement
         description: "Réponses de l'API de pré-inscription (connecteur lake-enrichissement) : champs extraits seulement."
+      - name: mosip_master_location
+        description: "Tous les changements de master.location (connecteurs mosip-master-cdc et lake-master)."
+      - name: mosip_master_registration_center
+        description: "Tous les changements de master.registration_center, sans contacts ni adresses."
+      - name: mosip_master_dynamic_field
+        description: "Tous les changements de master.dynamic_field : listes de valeurs (nationalité, genre…) et libellés."
