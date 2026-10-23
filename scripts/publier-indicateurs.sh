@@ -27,6 +27,14 @@ BEGIN;
 DELETE FROM bi.fait_preinscription_jour;
 INSERT INTO bi.fait_preinscription_jour (jour, statut, sexe, demandes, consommees)
 SELECT jour, statut, sexe, demandes, consommees FROM dm_preinscription.fait_preinscription_jour;
+DELETE FROM bi.fait_preinscription_profil_jour;
+INSERT INTO bi.fait_preinscription_profil_jour (jour, sexe, tranche_age, nationalite, demandes)
+SELECT jour, sexe, tranche_age, nationalite, demandes FROM dm_preinscription.fait_preinscription_profil_jour;
+DELETE FROM bi.fait_preinscription_zone_jour;
+INSERT INTO bi.fait_preinscription_zone_jour (jour, zone_id, demandes)
+SELECT f.jour, z.id, f.demandes
+FROM dm_preinscription.fait_preinscription_zone_jour f
+JOIN bi.zone z ON z.code = f.zone_code;
 INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
 SELECT 'preinscription', 'Pré-inscription', 6, premiere_donnee, derniere_donnee, now()
 FROM dm_preinscription.fraicheur_preinscription

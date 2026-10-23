@@ -64,3 +64,31 @@ models:
       - name: derniere_donnee
         data_tests:
           - not_null
+
+  - name: fait_preinscription_profil_jour
+    description: "Contrat bi.fait_preinscription_profil_jour : demandes par jour, sexe, tranche d'âge et nationalité."
+    columns:
+      - name: sexe
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['F', 'H', 'I']
+      - name: tranche_age
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['0-5', '6-14', '15-18', '19-25', '26-35', '36-45', '46-60', '60+', 'inconnu']
+      - name: nationalite
+        data_tests:
+          - not_null
+
+  - name: fait_preinscription_zone_jour
+    description: "Contrat bi.fait_preinscription_zone_jour : demandes par jour et préfecture de résidence."
+    columns:
+      - name: zone_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: code

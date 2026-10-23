@@ -28,6 +28,10 @@ models:
         +grants: {select: ['publisher_ro']}
       fraicheur_preinscription:
         +grants: {select: ['publisher_ro']}
+      fait_preinscription_profil_jour:
+        +grants: {select: ['publisher_ro']}
+      fait_preinscription_zone_jour:
+        +grants: {select: ['publisher_ro']}
 
 seeds:
   mosip_bi:

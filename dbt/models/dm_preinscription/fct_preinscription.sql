@@ -8,6 +8,10 @@
   - historique_complet : le dossier a été créé après le début de la capture ; tout son
     parcours est connu.
   - sexe : F ou H d'après l'API de pré-inscription ; I tant que le dossier n'est pas enrichi.
+  - age_a_la_demande : âge en années révolues au jour de la création, d'après l'année et le mois de naissance
+    (mois inconnu : seule l'année compte) ; vide si l'année n'est pas connue.
+  - nationalite : libellé de la liste MOSIP « nationality » ; « Non renseignée » sans code connu.
+  - prefecture_code : préfecture de résidence déclarée, seulement si elle existe dans dim_zone.
 -#}
 {{ config(indexes=[
     {'columns': ['prereg_id'], 'unique': True},
@@ -39,6 +43,14 @@ select
     cast(to_char(e.created_at at time zone 'UTC', 'YYYYMMDD') as integer)   as date_creation_key,
     e.status_code,
     coalesce(en.sexe, 'I')                                                  as sexe,
+    case when en.annee_naissance is not null then
+        cast(extract(year from e.created_at at time zone 'UTC') as integer) - en.annee_naissance
+        - case when en.mois_naissance > cast(extract(month from e.created_at at time zone 'UTC') as integer)
+               then 1 else 0 end
+    end                                                                     as age_a_la_demande,
+    en.nationalite                                                          as nationalite_code,
+    coalesce(nat.libelle, 'Non renseignée')                                 as nationalite,
+    zp.code                                                                 as prefecture_code,
     e.lang_code                                                             as langue,
     e.is_deleted                                                            as est_supprime,
     e.created_at                                                            as cree_le,
@@ -52,3 +64,7 @@ select
 from etat e
 left join parcours p using (prereg_id)
 left join {{ ref('stg_prereg__enrichissement') }} en using (prereg_id)
+left join {{ ref('stg_master__dynamic_field_valeurs') }} nat
+       on nat.champ = 'nationality' and nat.code = en.nationalite
+left join {{ ref('dim_zone') }} zp
+       on zp.code = en.prefecture_code and zp.niveau = 'prefecture'
