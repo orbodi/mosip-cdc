@@ -10,11 +10,15 @@ ALERTES=/var/log/mosip-bi/alertes.log
 alerte() { echo "ALERTE $*"; echo "$(date '+%F %T') $*" >> "$ALERTES"; }
 
 # 1. Connecteurs Kafka Connect : connecteur et tâches en RUNNING
-for c in mosip-prereg-cdc lake-prereg ods-prereg; do
+for c in mosip-prereg-cdc lake-prereg ods-prereg lake-enrichissement ods-enrichissement; do
   etat=$(curl -s --max-time 10 "http://localhost:8083/connectors/$c/status" \
     | jq -r '([.connector.state] + [.tasks[].state]) | unique | join(",")' 2>/dev/null)
   [ "$etat" = "RUNNING" ] || alerte "connecteur $c : ${etat:-injoignable}"
 done
+
+# 1b. Job Spark d'enrichissement en continu : conteneur en marche
+[ "$(docker inspect -f '{{.State.Running}}' mosip-cdc-spark 2>/dev/null)" = "true" ] \
+  || alerte "job Spark d'enrichissement (mosip-cdc-spark) arrêté"
 
 # 2. Fraîcheur des indicateurs lus par l'API (âge en minutes du dernier calcul)
 age() {
