@@ -99,6 +99,34 @@ services:
     networks:
       - mosip-cdc-net
 
+  spark-stream:
+    build: ./spark-image
+    image: mosip-cdc-spark:4.0.2
+    container_name: mosip-cdc-spark
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: ["/opt/spark/bin/spark-submit", "--master", "local[2]", "--driver-memory", "1g",
+              "/app/jobs/enrichissement_flux.py"]
+    environment:
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: "1"
+      API_URL: ${API_URL}
+      API_APP_ID: ${API_APP_ID}
+      API_CLIENT_ID: ${API_CLIENT_ID}
+      API_SECRET_KEY: ${API_SECRET_KEY}
+      API_TLS_VERIFY: ${API_TLS_VERIFY:-false}
+      FLUX_APPELS_SIMULTANES: ${FLUX_APPELS_SIMULTANES:-4}
+      FLUX_DEBIT_MAX: ${FLUX_DEBIT_MAX:-5}
+    volumes:
+      - ../spark:/app:ro
+      - ./certs:/certs:ro
+      - /data/mosip-cdc/spark/checkpoints:/checkpoints
+      - /data/mosip-cdc/spark/ivy:/opt/spark/ivy
+    networks:
+      - mosip-cdc-net
+
 networks:
   mosip-cdc-net:
     name: mosip-cdc-net
