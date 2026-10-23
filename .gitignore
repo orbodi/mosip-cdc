@@ -102,3 +102,14 @@ Thumbs.db
 # ==========================================
 dbt/target/
 dbt/dbt_packages/
+# Identifiant anonyme créé par dbt à chaque installation
+dbt/.user.yml
+
+# ==========================================
+# DONNEES D'EXECUTION SUR LE SERVEUR
+# ==========================================
+# Point de reprise et cache des pilotes de Spark (dans /data/mosip-cdc/spark)
+spark/checkpoints/
+spark/ivy/
+# Sauvegardes eventuelles
+backups/

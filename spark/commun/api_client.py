@@ -7,6 +7,7 @@ complète, lieu de naissance...) n'est jamais conservé, renvoyé ni journalisé
 import datetime as dt
 import logging
 import os
+import re
 import ssl
 import threading
 import time
@@ -67,20 +68,29 @@ def extraire(identite):
     for colonne, champ in CHAMPS_RESIDENCE.items():
         resultat[colonne] = _valeur(identite, champ)
 
-    naissance = _valeur(identite, "dateOfBirth")            # "AAAA/MM/JJ"
+    naissance = _valeur(identite, "dateOfBirth")
     if naissance:
-        morceaux = naissance.replace("-", "/").split("/")
-        try:
-            annee = int(morceaux[0])
-            if 1900 <= annee <= dt.date.today().year:
-                resultat["annee_naissance"] = annee
-                if identite.get("hasntMonthOfBirthFlag") != "Y" and len(morceaux) > 1:
-                    mois = int(morceaux[1])
-                    if 1 <= mois <= 12:
-                        resultat["mois_naissance"] = mois
-        except ValueError:
-            pass
+        resultat["annee_naissance"], resultat["mois_naissance"] = annee_mois(
+            naissance, mois_inconnu=identite.get("hasntMonthOfBirthFlag") == "Y")
     return resultat
+
+
+def annee_mois(texte, mois_inconnu=False):
+    """Année et mois d'une date de naissance, quel que soit son format :
+    AAAA/MM/JJ, AAAA-MM-JJ, JJ/MM/AAAA, AAAA-MM, AAAA seule, avec ou sans heure. Le jour est ignoré."""
+    morceaux = re.findall(r"\d+", str(texte).split("T")[0])
+    annee = next((int(m) for m in morceaux if len(m) == 4), None)
+    if annee is None or not 1900 <= annee <= dt.date.today().year:
+        return None, None
+    mois = None
+    if not mois_inconnu:
+        if len(morceaux) == 3 and len(morceaux[1]) <= 2:          # le mois est au milieu (A/M/J ou J/M/A)
+            mois = int(morceaux[1])
+        elif len(morceaux) == 2 and len(morceaux[0]) == 4:        # AAAA-MM
+            mois = int(morceaux[1])
+        if mois is not None and not 1 <= mois <= 12:
+            mois = None
+    return annee, mois
 
 
 def _echec(prereg_id, api_statut, code, message="", definitif=False):
