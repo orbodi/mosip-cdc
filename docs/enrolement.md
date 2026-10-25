@@ -87,7 +87,13 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
 
 6. Mise à jour du dépôt (`git pull`). Au passage suivant du cron, dbt crée les nouveaux modèles et publie un enrôlement
    vide.
-7. Topics, dans l'interface Kafka (ou `kafka/topics.sh`) : une partition chacun, réglages de `topics.sh`.
+7. Topics, dans l'interface Kafka (ou `kafka/topics.sh`) : une partition chacun, réglages de `topics.sh`. **Vérifier
+   les quatre en ligne de commande avant de créer la source**, car l'interface peut masquer les topics qui commencent
+   par `__` :
+   `docker exec mosip-cdc-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list | grep regprc`.
+   Sans `__debezium-heartbeat.mosip_regprc`, le snapshot passe, puis Debezium se bloque dès le suivi en continu
+   (`UNKNOWN_TOPIC_OR_PARTITION` dans les journaux de `mosip-cdc-connect`) et le slot retient les journaux de MOSIP
+   (incident du 25/10/2026, 13 h 35 à 14 h 30).
 8. Connecteurs, créés dans l'interface Kafka (nom = nom du fichier de `kafka/connecteurs/`, configuration = son
    contenu, mots de passe et hôte reportés). La source peut être créée avant les connecteurs JDBC : les messages
    attendent dans Kafka (topics compactés ou 28 jours). Son snapshot démarre aussitôt : créneau creux.
