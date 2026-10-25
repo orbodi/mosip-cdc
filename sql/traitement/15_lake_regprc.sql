@@ -27,5 +27,8 @@ CREATE TABLE IF NOT EXISTS lake.mosip_regprc_rid_uin_link (
     PRIMARY KEY (__connect_topic, __connect_partition, __connect_offset)
 );
 CREATE INDEX IF NOT EXISTS mosip_regprc_rid_uin_link_reg_id_idx ON lake.mosip_regprc_rid_uin_link (reg_id);
+-- Modifications seulement, pour l'alerte « entry_date modifiée » (ajouté le 25/10/2026 ; serveur : 18_index_lake_regprc.sql).
+CREATE INDEX IF NOT EXISTS mosip_regprc_rid_uin_link_modif_idx
+    ON lake.mosip_regprc_rid_uin_link (__source_ts_ms) WHERE __op = 'u';
 
 GRANT SELECT ON lake.mosip_regprc_rid_uin_link TO dbt_runner;

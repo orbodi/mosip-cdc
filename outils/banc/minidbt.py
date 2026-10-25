@@ -142,10 +142,12 @@ for nom in ordre:
     if incr:
         tmp = f'"{schema}"."{nom}__tmp"'
         psql(f"drop table if exists {tmp}; create table {tmp} as {sql};")
+        # Une seule commande, donc une seule transaction, comme dbt : un insert refusé (index unique) annule le delete.
+        supprimer = ""
         if cfg.get("incremental_strategy") == "delete+insert":
             k = cfg["unique_key"]
-            psql(f"delete from {rel} t using {tmp} s where t.{k} = s.{k};")
-        psql(f"insert into {rel} select * from {tmp}; drop table {tmp};")
+            supprimer = f"delete from {rel} t using {tmp} s where t.{k} = s.{k}; "
+        psql(f"{supprimer}insert into {rel} select * from {tmp}; drop table {tmp};")
         mode = f"incremental ({cfg.get('incremental_strategy')})"
     else:
         genre = psql(f"select relkind from pg_class where oid = to_regclass('{schema}.{nom}')", True)
@@ -179,36 +181,36 @@ def verdict(libelle, sql, severite="error"):
         echecs += 1
         print(f"  ÉCHEC  {libelle} : {n}")
 
-for racine, _, fichiers in os.walk(f"{DBT}/models"):
-    for f in fichiers:
-        if not f.endswith(".yml") or f == "sources.yml":
+proprietes = [os.path.join(r, f) for d in ("models", "seeds") for r, _, fs in os.walk(f"{DBT}/{d}") for f in fs
+              if f.endswith(".yml") and f != "sources.yml"]
+for chemin in proprietes:
+    doc = yaml.safe_load(open(chemin)) or {}
+    for m in doc.get("models", []) + doc.get("seeds", []):
+        if m["name"] not in noeuds and m["name"] not in seeds:
             continue
-        for m in (yaml.safe_load(open(os.path.join(racine, f))) or {}).get("models", []):
-            if m["name"] not in noeuds:
-                continue
-            rel = relation(m["name"])
-            for c in m.get("columns", []):
-                for t in c.get("data_tests", []):
-                    nom_t, args = (t, {}) if isinstance(t, str) else next(iter(t.items()))
-                    args = args or {}
-                    conf = args.get("config", {})
-                    a = args.get("arguments", args)
-                    where = f" and ({conf['where']})" if conf.get("where") else ""
-                    col = c["name"]
-                    if nom_t == "not_null":
-                        sql = f"select 1 from {rel} where {col} is null{where}"
-                    elif nom_t == "unique":
-                        sql = f"select {col} from {rel} where {col} is not null{where} group by 1 having count(*) > 1"
-                    elif nom_t == "accepted_values":
-                        vals = ", ".join(f"'{v}'" for v in a["values"])
-                        sql = f"select 1 from {rel} where {col} not in ({vals}){where}"
-                    elif nom_t == "relationships":
-                        cible = rendre("{{ " + a["to"] + " }}")[0]
-                        sql = (f"select 1 from {rel} s where s.{col} is not null{where} and not exists "
-                               f"(select 1 from {cible} c where c.{a['field']} = s.{col})")
-                    else:
-                        continue
-                    verdict(f"{m['name']}.{col} {nom_t}", sql, conf.get("severity", "error"))
+        rel = relation(m["name"])
+        for c in m.get("columns", []):
+            for t in c.get("data_tests", []):
+                nom_t, args = (t, {}) if isinstance(t, str) else next(iter(t.items()))
+                args = args or {}
+                conf = args.get("config", {})
+                a = args.get("arguments", args)
+                where = f" and ({conf['where']})" if conf.get("where") else ""
+                col = c["name"]
+                if nom_t == "not_null":
+                    sql = f"select 1 from {rel} where {col} is null{where}"
+                elif nom_t == "unique":
+                    sql = f"select {col} from {rel} where {col} is not null{where} group by 1 having count(*) > 1"
+                elif nom_t == "accepted_values":
+                    vals = ", ".join(f"'{v}'" for v in a["values"])
+                    sql = f"select 1 from {rel} where {col} not in ({vals}){where}"
+                elif nom_t == "relationships":
+                    cible = rendre("{{ " + a["to"] + " }}")[0]
+                    sql = (f"select 1 from {rel} s where s.{col} is not null{where} and not exists "
+                           f"(select 1 from {cible} c where c.{a['field']} = s.{col})")
+                else:
+                    continue
+                verdict(f"{m['name']}.{col} {nom_t}", sql, conf.get("severity", "error"))
 
 if os.path.isdir(f"{DBT}/tests"):
     for f in sorted(os.listdir(f"{DBT}/tests")):

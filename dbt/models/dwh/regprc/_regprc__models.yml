@@ -1,41 +1,36 @@
 version: 2
 
+# Unicité : pas de test « unique » là où la base la garantit déjà. Un tel test relit toute la table à chaque passage
+# (10 à 27 s chacun le 25/10/2026) sans pouvoir échouer :
+# - rid de stg_regprc__registration et synchronisation_id de stg_regprc__registration_list : clés primaires de l'ODS
+#   (sql/traitement/14_ods_regprc.sql) ;
+# - rid de stg_regprc__rid_uin_link (rien ne l'impose dans l'ODS) et rid de suivi_inscription : index unique de
+#   dwh.suivi_inscription. Un deuxième lien pour un même RID fait échouer le modèle suivi_inscription (« duplicate key
+#   value violates unique constraint »), donc la publication : voir docs/enrolement.md, Exploitation.
+
 models:
   - name: stg_regprc__registration
-    description: "État courant de regprc.registration (ODS) : une ligne par inscription reçue."
+    description: "État courant de regprc.registration (ODS) : une ligne par inscription reçue (clé primaire : rid)."
     columns:
-      - name: rid
-        data_tests:
-          - unique
-          - not_null
       - name: recu_le
         data_tests:
           - not_null
 
   - name: stg_regprc__rid_uin_link
-    description: "Lien inscription → NIU (ODS), sans le NIU : une ligne par RID."
+    description: "Lien inscription → NIU (ODS), sans le NIU : une ligne par RID (garanti par l'index unique de suivi_inscription)."
     columns:
-      - name: rid
-        data_tests:
-          - unique
       - name: niu_le
         data_tests:
           - not_null
 
   - name: stg_regprc__registration_list
-    description: "Synchronisations des paquets (ODS) : une ligne par synchronisation."
-    columns:
-      - name: synchronisation_id
-        data_tests:
-          - unique
-          - not_null
+    description: "Synchronisations des paquets (ODS) : une ligne par synchronisation (clé primaire : synchronisation_id)."
 
   - name: suivi_inscription
-    description: "Table pivot : une ligne par RID reçu ou synchronisé, jalons, étape et devenir (règle I4)."
+    description: "Table pivot : une ligne par RID reçu ou synchronisé, jalons, étape et devenir (règle I4) ; rid unique par index."
     columns:
       - name: rid
         data_tests:
-          - unique
           - not_null
       - name: code_centre
         description: "Cinq premiers chiffres du RID (décision C) ; un code absent du référentiel lève une alerte."

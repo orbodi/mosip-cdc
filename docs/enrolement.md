@@ -55,7 +55,9 @@ registration_list ─┘  mosip-      │                                     �
 | `fraicheur_enrolement` | `bi.source_fraicheur('enrolement')` | pastille de mise à jour |
 
 **Contrôles bloquants** (rien n'est publié en cas d'échec, pré-inscriptions comprises) : somme des devenirs =
-inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; étapes = Devenir ; histogrammes complets.
+inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; étapes = Devenir ; histogrammes complets ; codes uniques
+dans les seeds. L'unicité du RID n'est pas un test : clés primaires de l'ODS et index unique de
+`dwh.suivi_inscription` (un doublon fait échouer ce modèle ; allègement du 25/10/2026, un passage dbt de 88 s).
 **Alertes** : centre non référencé, statut ou étape inconnus, horodatage du RID illisible, `entry_date` modifiée.
 
 ## Mise en service
@@ -75,7 +77,8 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
 1. Propriétaire de `mosip_bi` et des schémas `lake` et `ods` (`enterprisedb`) : `sql/traitement/17_prerequis_proprietaire.sql`
    (extension pgcrypto, usage du schéma `ods` pour dbt, schéma `dm_enrolement` propriété de `dbt_runner`, contrôles).
 2. `ods_writer` : `sql/traitement/14_ods_regprc.sql`.
-3. `ingest_writer` : `sql/traitement/15_lake_regprc.sql`.
+3. `ingest_writer` : `sql/traitement/15_lake_regprc.sql` (crée aussi l'index de l'alerte « entry_date modifiée »).
+   Installation antérieure au 25/10/2026, 18 h 30 : `sql/traitement/18_index_lake_regprc.sql`, une fois, à tout moment.
 
 **API (mosip-bi-reporting, branche `dashboard`)**
 
@@ -124,6 +127,7 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
 | Slot perdu | nouveau slot, nouveau snapshot (l'ODS est réécrit sur place), puis la ligne précédente |
 | Connecteur source arrêté plus d'un jour | MOSIP en PostgreSQL 12 ne plafonne pas les journaux retenus : supprimer le slot (DBA), puis nouveau snapshot |
 | Alerte « entry_date modifiée » | signaler à l'équipe MOSIP : la date du NIU n'est pas stable pour ces dossiers |
+| `suivi_inscription` en échec, « duplicate key value violates unique constraint » | deux liens `rid_uin_link` pour un même RID (rien ne l'interdit dans l'ODS) : `select reg_id, count(*) from ods.regprc_rid_uin_link group by 1 having count(*) > 1;`, signaler à l'équipe MOSIP ; rien n'est publié tant que le doublon reste |
 
 Retour arrière : supprimer la source `mosip-regprc-cdc`, puis le slot côté MOSIP (DBA). Revenir au commit précédent de
 `mosip-cdc` ; les tables V7 restent vides et ne gênent pas l'API.

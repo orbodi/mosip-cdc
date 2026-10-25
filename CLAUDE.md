@@ -19,6 +19,9 @@ Lire d'abord `../outfit.md` (état du travail et décisions) et `README.md` (arc
   5. publication dans `scripts/publier-indicateurs.sh` (DELETE + INSERT dans la transaction existante, codes résolus
      en identifiants `bi.zone`, regroupement après résolution) ; droits `bi` par un script exécuté par `bi_owner`.
 - Correspondances de codes MOSIP dans `dbt/seeds/` ; un code inconnu compte en « non classé », jamais deviné.
+- Pas de test `unique` sur une colonne déjà garantie par une clé primaire ou un index unique : il relit toute la table à
+  chaque passage sans pouvoir échouer. Un test sur une grande table ne lit que ce qui a changé (offset, `maj_le`,
+  index partiel), comme `assert_rid_uin_link_date_modifiee`.
 - Une égalité de contrôle publiée dans le backend a son test singulier dans `dbt/tests/` (bloquant). Une anomalie de
   données (code inconnu, date modifiée) est une alerte (`severity: warn`) : un échec bloque toute la publication.
 - RID : jamais publié vers `bi` ; seule son empreinte `hmac(rid, SUIVI_HMAC_CLE, 'sha256')` l'est (suivi d'un dossier).

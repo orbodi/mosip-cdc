@@ -61,12 +61,10 @@ models:
     description: "Paquets synchronisés non reçus par centre et ancienneté (I10)."
 
   - name: suivi_dossier
-    description: "Source de bi.suivi_dossier : une ligne par RID ; le RID est remplacé par son empreinte à la publication."
-    columns:
-      - name: rid
-        data_tests:
-          - unique
-          - not_null
+    description: >-
+      Source de bi.suivi_dossier : une ligne par RID ; le RID est remplacé par son empreinte à la publication. Vue sur
+      suivi_inscription (rid unique par index) jointe aux libellés d'étape (code unique, test du seed) : pas de test
+      d'unicité ici, il relisait toute la table à chaque passage (12 s).
 
   - name: fraicheur_enrolement
     description: "Bornes des données publiées dans bi.source_fraicheur (une ligne ; nulles tant que rien n'est reçu)."

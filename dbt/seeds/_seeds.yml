@@ -1,0 +1,18 @@
+version: 2
+
+# Correspondances de codes MOSIP. Un code en double dupliquerait des lignes de suivi_inscription (statuts) ou de
+# suivi_dossier (étapes) : contrôle bloquant, rapide (quelques dizaines de lignes).
+seeds:
+  - name: ref_regprc_statuts
+    columns:
+      - name: status_code
+        data_tests:
+          - unique
+          - not_null
+
+  - name: ref_regprc_etapes
+    columns:
+      - name: code
+        data_tests:
+          - unique
+          - not_null
