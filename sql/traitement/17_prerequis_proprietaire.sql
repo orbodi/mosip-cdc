@@ -10,7 +10,11 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 --    en direct des pré-inscriptions). Les droits sur les tables sont donnés par 14_ods_regprc.sql.
 GRANT USAGE ON SCHEMA ods TO dbt_runner, publisher;
 
--- 3. Contrôles : les connecteurs créent ou modifient leurs tables (schema.evolution) dans leur schéma
+-- 3. Schéma du data mart de l'enrôlement, propriété de dbt_runner : dbt n'a pas le droit CREATE sur la base et ne
+--    peut pas le créer lui-même (incident du 25/10/2026 : « permission denied for database mosip_bi », plus rien publié).
+CREATE SCHEMA IF NOT EXISTS dm_enrolement AUTHORIZATION dbt_runner;
+
+-- 4. Contrôles : les connecteurs créent ou modifient leurs tables (schema.evolution) dans leur schéma
 SELECT extname, extversion FROM pg_extension WHERE extname = 'pgcrypto';
 SELECT has_schema_privilege('ods_writer', 'ods', 'CREATE')       AS ods_writer_cree_dans_ods,
        has_schema_privilege('ingest_writer', 'lake', 'CREATE')   AS ingest_writer_cree_dans_lake,

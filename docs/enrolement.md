@@ -73,7 +73,7 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
 
 **BD traitement**
 1. Propriétaire de `mosip_bi` et des schémas `lake` et `ods` (`enterprisedb`) : `sql/traitement/17_prerequis_proprietaire.sql`
-   (extension pgcrypto, usage du schéma `ods` pour dbt, contrôles).
+   (extension pgcrypto, usage du schéma `ods` pour dbt, schéma `dm_enrolement` propriété de `dbt_runner`, contrôles).
 2. `ods_writer` : `sql/traitement/14_ods_regprc.sql`.
 3. `ingest_writer` : `sql/traitement/15_lake_regprc.sql`.
 
