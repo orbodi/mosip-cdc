@@ -11,7 +11,8 @@ alerte() { echo "ALERTE $*"; echo "$(date '+%F %T') $*" >> "$ALERTES"; }
 
 # 1. Connecteurs Kafka Connect : connecteur et tâches en RUNNING
 for c in mosip-prereg-cdc lake-prereg ods-prereg lake-enrichissement ods-enrichissement \
-         mosip-master-cdc lake-master; do
+         mosip-master-cdc lake-master mosip-regprc-cdc ods-regprc-registration ods-regprc-rid-uin-link \
+         ods-regprc-registration-list lake-regprc-rid-uin-link; do
   etat=$(curl -s --max-time 10 "http://localhost:8083/connectors/$c/status" \
     | jq -r '([.connector.state] + [.tasks[].state]) | unique | join(",")' 2>/dev/null)
   [ "$etat" = "RUNNING" ] || alerte "connecteur $c : ${etat:-injoignable}"
@@ -40,16 +41,32 @@ b=$(PGPASSWORD="$PUBLISHER_PASSWORD" psql -h "$TRAITEMENT_PG_HOST" -U publisher 
    FROM bi.source_fraicheur WHERE source = 'preinscription'" 2>/dev/null)
 [ "${b:-9999}" -lt 15 ] || alerte "pré-inscriptions publiées vers bi il y a ${b:-?} min (attendu : moins de 15)"
 
-# 3. Retard du slot de réplication sur MOSIP, si l'accès est renseigné dans compose/.env
+# Enrôlement : contrôlé dès que la ligne existe (première publication après la mise en service de la capture)
+e=$(PGPASSWORD="$PUBLISHER_PASSWORD" psql -h "$TRAITEMENT_PG_HOST" -U publisher -d mosip_bi -Atq -c \
+  "SELECT (extract(epoch FROM now() - dernier_chargement) / 60)::int
+   FROM bi.source_fraicheur WHERE source = 'enrolement' AND dernier_chargement IS NOT NULL" 2>/dev/null)
+[ -z "$e" ] || [ "$e" -lt 15 ] || alerte "enrôlement publié vers bi il y a $e min (attendu : moins de 15)"
+
+# 2b. Capture de l'enrôlement : âge du dernier changement reçu dans l'ODS (registration change en continu, environ
+#     610 000 fois par jour). Contrôlé dès que la table a des lignes.
+o=$(PGPASSWORD="$PUBLISHER_PASSWORD" psql -h "$TRAITEMENT_PG_HOST" -U publisher -d mosip_bi -Atq -c \
+  "SELECT (extract(epoch FROM now() - to_timestamp(max(__source_ts_ms) / 1000.0)) / 60)::int
+   FROM ods.regprc_registration HAVING count(*) > 0" 2>/dev/null)
+[ -z "$o" ] || [ "$o" -lt 120 ] || alerte "ODS de l'enrôlement : dernier changement reçu il y a $o min (attendu : moins de 120)"
+
+# 3. Retard des slots de réplication sur MOSIP, si l'accès est renseigné dans compose/.env (base : slot)
 if [ -n "${MOSIP_PG_HOST:-}" ] && [ -n "${MOSIP_PG_PASSWORD:-}" ]; then
-  r=$(PGPASSWORD="$MOSIP_PG_PASSWORD" psql -h "$MOSIP_PG_HOST" -U eidreporting -d mosip_prereg -Atq -c \
-    "SELECT (pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) / 1048576)::int
-     FROM pg_replication_slots WHERE slot_name = 'mosip_applicant_cdc'" 2>/dev/null)
-  if [ -z "$r" ]; then
-    alerte "slot mosip_applicant_cdc introuvable ou MOSIP injoignable"
-  elif [ "$r" -ge 1024 ]; then
-    alerte "retard du slot mosip_applicant_cdc : $r Mo (attendu : moins de 1024)"
-  fi
+  for base_slot in mosip_prereg:mosip_applicant_cdc mosip_master:mosip_master_cdc mosip_regprc:mosip_regprc_cdc; do
+    base=${base_slot%%:*}; slot=${base_slot#*:}
+    r=$(PGPASSWORD="$MOSIP_PG_PASSWORD" psql -h "$MOSIP_PG_HOST" -U eidreporting -d "$base" -Atq -c \
+      "SELECT (pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) / 1048576)::int
+       FROM pg_replication_slots WHERE slot_name = '$slot'" 2>/dev/null)
+    if [ -z "$r" ]; then
+      alerte "slot $slot introuvable ou MOSIP injoignable ($base)"
+    elif [ "$r" -ge 1024 ]; then
+      alerte "retard du slot $slot : $r Mo (attendu : moins de 1024)"
+    fi
+  done
 fi
 
 # 4. Disque du serveur pipeline

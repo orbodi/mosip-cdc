@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: stg_regprc__registration
+    description: "État courant de regprc.registration (ODS) : une ligne par inscription reçue."
+    columns:
+      - name: rid
+        data_tests:
+          - unique
+          - not_null
+      - name: recu_le
+        data_tests:
+          - not_null
+
+  - name: stg_regprc__rid_uin_link
+    description: "Lien inscription → NIU (ODS), sans le NIU : une ligne par RID."
+    columns:
+      - name: rid
+        data_tests:
+          - unique
+      - name: niu_le
+        data_tests:
+          - not_null
+
+  - name: stg_regprc__registration_list
+    description: "Synchronisations des paquets (ODS) : une ligne par synchronisation."
+    columns:
+      - name: synchronisation_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: suivi_inscription
+    description: "Table pivot : une ligne par RID reçu ou synchronisé, jalons, étape et devenir (règle I4)."
+    columns:
+      - name: rid
+        data_tests:
+          - unique
+          - not_null
+      - name: code_centre
+        description: "Cinq premiers chiffres du RID (décision C) ; un code absent du référentiel lève une alerte."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: code
+              config:
+                severity: warn
+      - name: devenir
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['niu', 'en_cours', 'echoue', 'rejete', 'non_classe', 'non_recu']
+          - accepted_values:
+              arguments:
+                values: ['niu', 'en_cours', 'echoue', 'rejete', 'non_recu']
+              config:
+                severity: warn
+      - name: status_code
+        description: "Statut MOSIP ; un code absent de ref_regprc_statuts compte en non_classe (alerte)."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('ref_regprc_statuts')
+                field: status_code
+              config:
+                severity: warn
+                where: "devenir <> 'niu'"
+      - name: etape
+        description: "Étape d'arrêt ou de présence ; un code absent de ref_regprc_etapes s'affiche sous son code (alerte)."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('ref_regprc_etapes')
+                field: code
+              config:
+                severity: warn
+      - name: enrole_le
+        description: "Horodatage du RID ; nul si les 14 derniers chiffres ne sont pas une date (alerte)."
+        data_tests:
+          - not_null:
+              config:
+                severity: warn

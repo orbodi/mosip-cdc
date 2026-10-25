@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Crée les topics écrits par Spark et par le connecteur du référentiel (Kafka refuse l'auto-création).
+# Crée les topics écrits par Spark et par les connecteurs du référentiel et de l'enrôlement (Kafka refuse
+# l'auto-création).
 # Peut être relancé sans risque (--if-not-exists).
 set -euo pipefail
 K="docker exec mosip-cdc-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092"
@@ -23,7 +24,25 @@ $K --create --if-not-exists --topic mosip.master.dynamic_field \
 $K --create --if-not-exists --topic __debezium-heartbeat.mosip_master \
    --partitions 1 --replication-factor 1 --config cleanup.policy=compact
 
+# Enrôlement (connecteur mosip-regprc-cdc), UNE partition par topic : l'ordre des offsets suit l'ordre des changements,
+# et les modèles dbt lisent l'ODS par offset.
+# - registration et registration_list : compactés, Kafka garde le dernier état de chaque inscription sans limite de
+#   durée, ce qui permet de reconstruire l'ODS. min.compaction.lag.ms laisse un jour aux connecteurs pour tout lire
+#   avant compaction.
+# - rid_uin_link : 28 jours, comme les autres journaux ; le lake (lake-regprc-rid-uin-link) garde tout l'historique.
+$K --create --if-not-exists --topic mosip.regprc.registration \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.compaction.lag.ms=86400000
+$K --create --if-not-exists --topic mosip.regprc.registration_list \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.compaction.lag.ms=86400000
+$K --create --if-not-exists --topic mosip.regprc.rid_uin_link \
+   --partitions 1 --replication-factor 1 --config retention.ms=2419200000
+$K --create --if-not-exists --topic __debezium-heartbeat.mosip_regprc \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact
+
 $K --describe --topic mosip.prereg.enrichissement
 $K --describe --topic mosip.prereg.enrichissement.erreurs
+$K --describe --topic mosip.regprc.registration
+$K --describe --topic mosip.regprc.registration_list
+$K --describe --topic mosip.regprc.rid_uin_link
 $K --describe --topic mosip.master.location
 $K --describe --topic mosip.master.registration_center

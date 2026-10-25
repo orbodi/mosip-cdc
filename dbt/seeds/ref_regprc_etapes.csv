@@ -1,0 +1,18 @@
+code,libelle,ordre
+PACKET_RECEIVER,Réception du paquet,10
+SECUREZONE_NOTIFICATION,Notification de zone sécurisée,15
+UPLOAD_PACKET,Envoi du paquet,20
+REFUS_POSTE,Refus au poste,25
+VALIDATE_PACKET,Validation du paquet,30
+PACKET_CLASSIFICATION,Classement du paquet,35
+QUALITY_CHECK,Contrôle de qualité,40
+OSI_VALIDATE,Validation opérateur et superviseur,45
+DEMOGRAPHIC_VERIFICATION,Déduplication démographique,50
+BIOGRAPHIC_VERIFICATION,Déduplication biométrique,55
+BIOMETRIC_AUTHENTICATION,Authentification biométrique,57
+MANUAL_VERIFICATION,Vérification manuelle,60
+FMS,FMS,65
+UIN_GENERATOR,Génération du NIU,70
+PRINT_SERVICE,Impression,80
+NOTIFICATION,Notification,85
+PACKET_REPROCESS,Retraitement du paquet,90

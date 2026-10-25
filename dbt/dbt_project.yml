@@ -32,9 +32,19 @@ models:
         +grants: {select: ['publisher_ro']}
       fait_preinscription_zone_jour:
         +grants: {select: ['publisher_ro']}
+    dm_enrolement:
+      +schema: dm_enrolement
+      +materialized: table
+      +grants: {select: ['publisher_ro']}
+      # Usage du schéma pour la publication : donné par dbt, dès sa création (sans script à lancer à part)
+      +post-hook: "grant usage on schema {{ this.schema }} to publisher_ro"
 
 seeds:
   mosip_bi:
     +schema: dwh
     ref_zone_corrections:
       +column_types: {code: text, parent_code: text, masquer: boolean, motif: text}
+    ref_regprc_statuts:
+      +column_types: {status_code: text, libelle: text, devenir_sans_niu: text}
+    ref_regprc_etapes:
+      +column_types: {code: text, libelle: text, ordre: integer}

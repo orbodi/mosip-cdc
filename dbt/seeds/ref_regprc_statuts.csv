@@ -1,0 +1,7 @@
+status_code,libelle,devenir_sans_niu
+PROCESSING,En cours de traitement,en_cours
+ERROR,Erreur passagère (génération du NIU),en_cours
+FAILED,En échec,echoue
+PACKET_UPLOADER_FAILED,Échec de l'envoi du paquet,echoue
+REJECTED,Rejetée,rejete
+PROCESSED,Traitée sans lien vers un NIU (anomalie),non_classe
