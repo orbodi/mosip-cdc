@@ -78,8 +78,9 @@ recherche.
   - `GET /enrolement/delais` ;
   - `GET /enrolement/synchronisation` ;
   - `GET /enrolement/profil` (âge, sexe, nationalité) ;
-  - `POST /enrolement/suivi` : RID dans le corps de la requête, rôle dédié, portée régionale, journal applicatif des
-    recherches, plafond par utilisateur.
+  - `POST /enrolement/suivi` : RID dans le corps de la requête, journal applicatif des recherches. Sans plafond de
+    recherches (décision du 26/10/2026) ni portée régionale (chaque utilisateur a accès à tout le Togo, décision du
+    25/10/2026).
 - **Routes existantes à ajuster** :
   - `devenir` : règle I4 ;
   - `territoire` : délai médian ;

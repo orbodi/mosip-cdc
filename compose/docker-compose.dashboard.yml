@@ -26,6 +26,8 @@ services:
       SPRING_FLYWAY_PASSWORD: ${BI_OWNER_PASSWORD}
       BI_SECURITE_ACTIVE: "false"
       BI_ORIGINES_AUTORISEES: http://${FRONT_HOTE:-localhost}:${FRONT_PORT:-5173}
+      # Suivi d'un dossier : même clé que la publication de bi.suivi_dossier (compose/.env, jamais dans le dépôt).
+      SUIVI_HMAC_CLE: ${SUIVI_HMAC_CLE:-}
       TZ: UTC
     volumes:
       - ${DASHBOARD_DIR:-/data/mosip-bi-reporting}/backend:/backend

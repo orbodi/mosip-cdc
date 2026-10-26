@@ -122,7 +122,9 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
 |---|---|
 | `ref_regprc_statuts.csv` ou `ref_regprc_etapes.csv` modifié | `dbt build --full-refresh --select suivi_inscription+`, puis `scripts/charger-suivi.sh` |
 | `dbt --full-refresh` de `suivi_inscription` | `scripts/charger-suivi.sh` (toutes les lignes ont une nouvelle `maj_le`) |
-| Clé `SUIVI_HMAC_CLE` changée | mettre la nouvelle clé dans `compose/.env` (lue aussi par l'API), puis `scripts/charger-suivi.sh --vider` |
+| Clé `SUIVI_HMAC_CLE` changée | mettre la nouvelle clé dans `compose/.env`, puis `scripts/charger-suivi.sh --vider`, puis redémarrer l'API (`docker compose -f docker-compose.dashboard.yml up -d api`, qui relit la clé) |
+| Suivi d'un dossier : « n'est pas configuré » (503) | l'API n'a pas reçu `SUIVI_HMAC_CLE` : vérifier `compose/.env` et la ligne `SUIVI_HMAC_CLE` de `docker-compose.dashboard.yml`, puis `up -d api` |
+| Suivi d'un dossier : un RID connu de MOSIP « ne correspond à aucun dossier » | dossier pas encore publié (passage suivant du cron) ou clé de l'API différente de celle de la publication |
 | Topic recréé ou ODS rechargé (offsets repartis de 0) | `dbt build --full-refresh --select suivi_inscription+`, puis `scripts/charger-suivi.sh` |
 | Slot perdu | nouveau slot, nouveau snapshot (l'ODS est réécrit sur place), puis la ligne précédente |
 | Connecteur source arrêté plus d'un jour | MOSIP en PostgreSQL 12 ne plafonne pas les journaux retenus : supprimer le slot (DBA), puis nouveau snapshot |
