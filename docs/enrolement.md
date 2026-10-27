@@ -28,6 +28,8 @@ registration_list ─┘  mosip-      │                                     �
   rejets, échecs et en cours (relevé R13 : une vingtaine de messages pour les rejets, une quarantaine pour les échecs,
   aucun identifiant de personne). Le texte reste dans l'ODS ; dbt le range dans un motif
   (`seeds/ref_regprc_motifs.csv`) et seul le code du motif va vers `bi`.
+  Les inscriptions captées avant le 27/10/2026 ont été complétées une fois par `scripts/rattraper-status-comment.sh`
+  (lignes vides seulement, relançable).
 - **Journal** (lake) pour `rid_uin_link` seulement : il sert à repérer un `entry_date` modifié après coup (alerte).
 - Le RID est en clair dans l'ODS, le lake et le `dwh`, comme le `prereg_id`. Vers `bi`, seule son **empreinte HMAC**
   est publiée (suivi d'un dossier), avec la clé `SUIVI_HMAC_CLE` de `compose/.env`.
