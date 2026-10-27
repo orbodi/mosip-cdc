@@ -2,13 +2,15 @@
 -- À exécuter par un administrateur de la base MOSIP, connecté à mosip_regprc.
 -- Partie A : contrôles en lecture seule, sans effet. Partie B : commandes à exécuter UNE fois, après relecture.
 --
--- Trois tables sont capturées, et seulement les colonnes sans donnée d'identité ni texte libre
--- (docs/conception-enrolement.md § 2) :
+-- Trois tables sont capturées, et seulement les colonnes sans donnée d'identité (docs/conception-enrolement.md § 2) :
 --   regprc.registration      : id (RID), reg_type, status_code, latest_trn_type_code, latest_trn_status_code,
---                              latest_trn_dtimes, reg_stage_name, cr_dtimes, upd_dtimes ;
+--                              latest_trn_dtimes, reg_stage_name, status_comment, cr_dtimes, upd_dtimes ;
+--                              status_comment (motif de MOSIP) depuis le 26/10/2026 : messages techniques en
+--                              anglais, sans identifiant de personne (relevé R13, docs/releve-enrolement.md étape 7) ;
+--                              le texte reste dans l'ODS, seul un code de motif est publié ;
 --   regprc.rid_uin_link      : id, reg_id (RID), reg_type, entry_date ;
 --   regprc.registration_list : id, reg_id (RID), reg_type, client_status_code, cr_dtimes, upd_dtimes.
--- Jamais lues : uin et civil_registry_number (rid_uin_link) ; status_comment, cr_by, upd_by (registration) ; noms,
+-- Jamais lues : uin et civil_registry_number (rid_uin_link) ; cr_by, upd_by (registration) ; noms,
 -- téléphones, adresses électroniques et autres colonnes de registration_list.
 -- registration_transaction (phase 3) n'est PAS capturée ici : elle aura son propre réglage, sans snapshot.
 
@@ -27,7 +29,7 @@ FROM information_schema.columns
 WHERE table_schema = 'regprc'
   AND table_name IN ('registration', 'rid_uin_link', 'registration_list')
   AND column_name IN ('id', 'reg_id', 'reg_type', 'status_code', 'latest_trn_type_code', 'latest_trn_status_code',
-                      'latest_trn_dtimes', 'reg_stage_name', 'cr_dtimes', 'upd_dtimes', 'entry_date',
+                      'latest_trn_dtimes', 'reg_stage_name', 'status_comment', 'cr_dtimes', 'upd_dtimes', 'entry_date',
                       'client_status_code')
 ORDER BY table_name, column_name;
 

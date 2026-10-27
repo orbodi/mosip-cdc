@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS ods.regprc_registration (
     latest_trn_status_code  text,
     latest_trn_dtimes       timestamp,
     reg_stage_name          text,
+    status_comment          text,                    -- motif de MOSIP (texte technique, relevé du 26/10/2026)
     cr_dtimes               timestamp,               -- réception par MOSIP
     upd_dtimes              timestamp,
     __deleted               text,
@@ -39,6 +40,9 @@ CREATE TABLE IF NOT EXISTS ods.regprc_registration (
     __kafka_offset          bigint
 );
 CREATE INDEX IF NOT EXISTS regprc_registration_offset_idx ON ods.regprc_registration (__kafka_offset);
+-- Ajout du 26/10/2026 (motif des rejets, échecs et en cours) sur une table déjà créée : À EXÉCUTER AVANT de modifier
+-- le connecteur mosip-regprc-cdc, pour que le connecteur ods-regprc-registration trouve la colonne.
+ALTER TABLE ods.regprc_registration ADD COLUMN IF NOT EXISTS status_comment text;
 
 CREATE TABLE IF NOT EXISTS ods.regprc_rid_uin_link (
     id                      bigint    PRIMARY KEY,   -- clé technique, sans valeur métier

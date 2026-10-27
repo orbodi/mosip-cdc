@@ -17,13 +17,17 @@ registration_list ─┘  mosip-      │                                     �
 
 | Table MOSIP | Colonnes | Jamais |
 |---|---|---|
-| `registration` | `id` (RID), `reg_type`, `status_code`, `latest_trn_type_code`, `latest_trn_status_code`, `latest_trn_dtimes`, `reg_stage_name`, `cr_dtimes`, `upd_dtimes` | `status_comment`, `cr_by`, `upd_by`… |
+| `registration` | `id` (RID), `reg_type`, `status_code`, `latest_trn_type_code`, `latest_trn_status_code`, `latest_trn_dtimes`, `reg_stage_name`, `status_comment` (depuis le 26/10/2026), `cr_dtimes`, `upd_dtimes` | `cr_by`, `upd_by`… |
 | `rid_uin_link` | `id`, `reg_id` (RID), `reg_type`, `entry_date` | **`uin`, `civil_registry_number`** |
 | `registration_list` | `id`, `reg_id` (RID), `reg_type`, `client_status_code`, `cr_dtimes`, `upd_dtimes` | noms, téléphones, adresses |
 
 - **ODS** (état courant, mis à jour sur place) pour les trois tables : `registration` reçoit environ 610 000 mises à
   jour par jour, un journal complet serait trop lourd. Chaque ligne porte l'offset Kafka du message qui l'a écrite
   (`__kafka_offset`) : dbt ne relit que ce qui a changé.
+- **`status_comment`** (motif de MOSIP, texte technique en anglais) : capté depuis le 26/10/2026 pour expliquer les
+  rejets, échecs et en cours (relevé R13 : une vingtaine de messages pour les rejets, une quarantaine pour les échecs,
+  aucun identifiant de personne). Le texte reste dans l'ODS ; dbt le range dans un motif
+  (`seeds/ref_regprc_motifs.csv`) et seul le code du motif va vers `bi`.
 - **Journal** (lake) pour `rid_uin_link` seulement : il sert à repérer un `entry_date` modifié après coup (alerte).
 - Le RID est en clair dans l'ODS, le lake et le `dwh`, comme le `prereg_id`. Vers `bi`, seule son **empreinte HMAC**
   est publiée (suivi d'un dossier), avec la clé `SUIVI_HMAC_CLE` de `compose/.env`.

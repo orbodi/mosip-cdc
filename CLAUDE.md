@@ -7,7 +7,9 @@ Lire d'abord `../outfit.md` (état du travail et décisions) et `README.md` (arc
   la publication, relire les colonnes, clés et contraintes de la table cible dans les migrations, et la requête de
   `EnrolementRepository` (ou équivalent) qui la lit.
 - Une nouvelle source suit le patron des pré-inscriptions et de l'enrôlement :
-  1. connecteur Debezium aux seules colonnes utiles (`column.include.list`, jamais d'identité ni de texte libre),
+  1. connecteur Debezium aux seules colonnes utiles (`column.include.list`, jamais d'identité ; texte libre seulement
+     après un relevé qui montre qu'il ne contient pas d'identifiant, et jamais publié tel quel vers `bi`, comme
+     `registration.status_comment` rangé en motifs),
      prérequis DBA dans `sql/mosip/NN_prerequis_<base>.sql` (partie A en lecture seule, partie B une fois) ;
   2. topic créé dans `kafka/topics.sh` (une partition : dbt suit l'ordre des offsets) ;
   3. connecteur JDBC vers `lake.<topic avec _>` (`primary.key.mode=kafka`, `ExtractNewRecordState` avec

@@ -447,3 +447,45 @@ pas de source dans les tables retenues.
 | I9 | Délai enrôlement → réception | médiane, part au-delà de 3 jours, par centre et poste | par période et zone |
 | I10 | Synchronisés non reçus | en transit (moins de 7 jours) ou perdus | stock à l'instant |
 | I11 | Suivi d'un dossier | recherche exacte par RID (jamais affiché), résultat : jalons datés (enrôlement, synchronisation, réception, NIU), centre et territoire, étape et statut courants, étapes franchies (détail à partir de la capture de `registration_transaction`) | recherche |
+
+## Étape 7 (26/10/2026, 13 h) : `registration.status_comment`, motif des rejets, échecs et en cours
+
+Demande du responsable : expliquer chaque cas à la direction par le motif que MOSIP écrit dans `status_comment`
+(texte libre, jusqu'ici non capté). Relevé R13, en lecture seule, chiffres masqués (`#`) :
+
+| Devenir | Inscriptions | Messages distincts | Suite de 6 chiffres ou plus | Adresse électronique |
+|---|---|---|---|---|
+| rejeté | 158 487 | 20 | 0 | 0 |
+| échoué | 108 978 | 44 | 0 | 0 |
+| en cours | 64 720 | 230 | 56 | 0 |
+
+- Les 56 suites de chiffres (6 à 12 chiffres) sont des morceaux d'identifiants de requête de l'ABIS (UUID, « Identify
+  / Insert Response Failed for Request ID … »), ni RID (29 chiffres) ni NIU : **aucune donnée de personne**.
+- Messages principaux :
+
+| Devenir | Étape (`reg_stage_name`) | Commentaire | Inscriptions |
+|---|---|---|---|
+| rejeté | PacketValidatorStage | Rejected by Supervisor | 90 810 |
+| rejeté | DemoDedupeStage | Biometric Duplicate was Found in ABIS | 37 690 |
+| rejeté | ManualVerificationStage (et 5 autres étapes) | Match Found by Manual Verifier | 28 355 |
+| rejeté | UinGeneratorStage | UIN Generation failed - Invalid Input Parameter - … | 1 140 |
+| rejeté | OSIValidatorStage | UIN or RID of Parent Not Found in Packet | 315 |
+| échoué | OSIValidatorStage | Biometric data (- Iris / - Finger / - FACE) did not match | 97 576 |
+| échoué | PacketUploaderStage | Packet not found in LANDING_ZONE, Packet Upload Failed, Hash Code Validation Failed | 6 988 |
+| échoué | OSIValidatorStage | Biometric data … / UIN not available in database | 3 319 |
+| en cours | BioDedupeStage | Manual verification Sent to queue | 51 707 |
+| en cours | ManualVerificationStage | Error in manual verification | 6 775 |
+| en cours | PacketReceiverStage | Packet is Uploaded to Landing Zone | 4 915 |
+
+Constats :
+- « Refus au poste » est confirmé : rejet par le superviseur du centre (90 810).
+- Le libellé « Déduplication démographique » trompait : ces 37 690 rejets sont des **doublons biométriques** trouvés
+  par l'ABIS à l'étape DemoDedupeStage.
+- 9 échecs sur 10 : la vérification biométrique de la personne qui valide le paquet (agent, superviseur ou parent,
+  étape OSI) ne concorde pas ; qui des trois : à confirmer avec l'équipe MOSIP.
+- `reg_stage_name` et `latest_trn_type_code` ne concordent pas toujours : la file de vérification manuelle est à
+  BioDedupeStage pour `reg_stage_name`, à MANUAL_VERIFICATION pour la dernière transaction.
+
+**Décisions du responsable (26/10/2026)** : `status_comment` est capté ; le bloc « Où s'arrêtent les paquets »
+montre pour chaque devenir l'étape (`reg_stage_name`), le motif traduit en français avec le commentaire de MOSIP, et
+le nombre de cas ; traductions validées. Le texte reste dans l'ODS, seul le code du motif est publié vers `bi`.
