@@ -27,4 +27,4 @@ DEDOUBLONNAGE_EN_COURS,Déduplication biométrique en cours (ABIS),Biometric Ded
 NIU_DEJA_EXISTANT,Dossier déjà présent dans le registre d'identité,Received ID record already exists error from idrepo,record already exists,150,Conflit à régulariser par l'équipe MOSIP.
 ETAPE_FRANCHIE,"Étape réussie, en attente de l'étape suivante",… is Successful / Unique Match was Found / Notification received,"successful|sucessfully|Unique Match was Found|Notification.{1,3}received",160,Normal s'il est récent ; bloqué au-delà de 30 jours.
 ERREUR_TECHNIQUE,Erreur technique de MOSIP,Unknown exception / NGINX url is not accessible / Response Failed…,exception|nginx|unknown error|response failed|error|RPR-,170,Service de MOSIP indisponible ou en erreur : à signaler à l'équipe MOSIP.
-AUTRE,Motif non répertorié,,,999,Message de MOSIP pas encore traduit : il sera ajouté au catalogue.
+AUTRE,Motif non répertorié,,,999,MOSIP n'a pas donné de motif ou son message n'est pas encore traduit (il sera ajouté au catalogue).
