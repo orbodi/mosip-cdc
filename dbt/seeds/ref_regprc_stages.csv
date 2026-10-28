@@ -3,6 +3,7 @@ PacketReceiverStage,Réception du paquet,10
 SecurezoneNotificationStage,Notification de zone sécurisée,15
 PacketUploaderStage,Envoi du paquet,20
 PacketValidatorStage,Validation du paquet,30
+VALIDATE_PACKET,Validation du paquet,31
 PacketClassifierStage,Classement du paquet,35
 QualityClassifierStage,Contrôle de qualité,40
 QualityCheckerStage,Contrôle de qualité,41
