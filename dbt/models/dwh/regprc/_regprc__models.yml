@@ -78,3 +78,19 @@ models:
           - not_null:
               config:
                 severity: warn
+
+  - name: motif_inscription
+    description: >-
+      Étape (reg_stage_name) et motif (status_comment rangé par seeds/ref_regprc_motifs.csv) des inscriptions rejetées,
+      échouées ou en cours ; rid unique par index. Le texte du commentaire n'y est pas.
+    columns:
+      - name: stage
+        description: "Étape de traitement ; une étape absente de ref_regprc_stages lève une alerte (libellé = son nom)."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('ref_regprc_stages')
+                field: stage
+              config:
+                severity: warn
+                where: "stage <> 'INCONNUE'"

@@ -1,7 +1,7 @@
 # Banc de test de la chaîne enrôlement
 
 Ce banc vérifie les modèles dbt de l'enrôlement et la publication vers `bi` sur un PostgreSQL local jetable, sans
-Kafka ni MOSIP. Il utilise les vraies migrations du backend (V1 à V7), les vrais scripts SQL de droits et le vrai
+Kafka ni MOSIP. Il utilise les vraies migrations du backend (V1 à V9), les vrais scripts SQL de droits et le vrai
 `scripts/publier-indicateurs.sh`.
 
 `minidbt.py` est un remplaçant minimal de dbt (Jinja, `ref`, `source`, `is_incremental`, `this`, seeds, index, grants,
@@ -19,7 +19,7 @@ Claude. Là où dbt est installé, `dbt build` reste la référence : le banc ne
 
 ```
 export PGHOST=/tmp PGUSER=postgres          # PostgreSQL de test
-outils/banc/installer.sh                    # base mosip_bi vierge, migrations V1 à V7 ; la chaîne tourne avec une ODS vide
+outils/banc/installer.sh                    # base mosip_bi vierge, migrations V1 à V9 ; la chaîne tourne avec une ODS vide
 psql -U ods_writer -d mosip_bi -f outils/banc/01_snapshot.sql      # snapshot initial : 8 inscriptions, 11 synchronisations
 outils/banc/passage.sh
 psql -U ods_writer -d mosip_bi -f outils/banc/02_flux.sql          # NIU, réception, nouvelle synchronisation…
@@ -41,8 +41,11 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
 - **Étapes** : rejetés = Refus au poste 1 + Déduplication démographique 1 ; échoués = Validation opérateur et
   superviseur 1 ; en cours = Réception du paquet 1 + Génération du NIU 1 (le dossier bloqué en vérification manuelle
   depuis le 05/07 a reçu son NIU dans le flux).
-- **Contrôles** : 0 échec ; 5 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
-  1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée.
+- **Motifs** (27/10/2026) : rejetés = Refusé par le superviseur du centre 1 + Doublon (ABIS) 1 ; échoués =
+  Vérification biométrique non concordante 1 ; en cours = Reçu, en attente de traitement 1 + Motif non répertorié 1
+  (R7, message absent du catalogue).
+- **Contrôles** : 0 échec ; 6 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
+  1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié.
 - **Suivi d'un dossier** : 11 lignes dans `bi.suivi_dossier`, retrouvées par
   `hmac('<RID>', 'cle-du-banc', 'sha256')`, jamais avec une autre clé.
 - **Reconstruction** : `--full-refresh` et un passage sans nouvel événement donnent des tables identiques à celles du

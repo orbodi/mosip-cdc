@@ -8,15 +8,16 @@
 --  L13 nouvelle synchronisation, pas encore reçue
 insert into ods.regprc_registration
  (id, reg_type, status_code, latest_trn_type_code, latest_trn_status_code, latest_trn_dtimes, reg_stage_name,
-  cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset) values
- ('10001000010000220260704080000','NEW','PROCESSED','UIN_GENERATOR','PROCESSED','2026-10-25 01:01','UinGeneratorStage','2026-07-04 09:00','2026-10-25 01:01','false','u',1792890000000,8),
- ('10001000020001020261023170000','NEW','PROCESSING','PACKET_RECEIVER','SUCCESS','2026-10-24 20:00','PacketReceiverStage','2026-10-24 20:00','2026-10-24 20:00','false','c',1792890000000,9),
- ('88888000010000520261005100000','NEW','FAILED','OSI_VALIDATE','FAILED','2026-10-05 12:00','OSIValidatorStage','2026-10-05 10:20','2026-10-24 21:00','false','u',1792890000000,10)
+  cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset, status_comment) values
+ ('10001000010000220260704080000','NEW','PROCESSED','UIN_GENERATOR','PROCESSED','2026-10-25 01:01','UinGeneratorStage','2026-07-04 09:00','2026-10-25 01:01','false','u',1792890000000,8,'UIN Generated Successfully'),
+ ('10001000020001020261023170000','NEW','PROCESSING','PACKET_RECEIVER','SUCCESS','2026-10-24 20:00','PacketReceiverStage','2026-10-24 20:00','2026-10-24 20:00','false','c',1792890000000,9,'Packet is Uploaded to Landing Zone'),
+ ('88888000010000520261005100000','NEW','FAILED','OSI_VALIDATE','FAILED','2026-10-05 12:00','OSIValidatorStage','2026-10-05 10:20','2026-10-24 21:00','false','u',1792890000000,10,'Biometric data - Iris did not match')
 on conflict (id) do update set reg_type = excluded.reg_type, status_code = excluded.status_code,
   latest_trn_type_code = excluded.latest_trn_type_code, latest_trn_status_code = excluded.latest_trn_status_code,
   latest_trn_dtimes = excluded.latest_trn_dtimes, reg_stage_name = excluded.reg_stage_name,
   cr_dtimes = excluded.cr_dtimes, upd_dtimes = excluded.upd_dtimes, __op = excluded.__op,
-  __source_ts_ms = excluded.__source_ts_ms, __kafka_offset = excluded.__kafka_offset;
+  __source_ts_ms = excluded.__source_ts_ms, __kafka_offset = excluded.__kafka_offset,
+  status_comment = excluded.status_comment;
 
 insert into ods.regprc_rid_uin_link
  (id, reg_id, reg_type, entry_date, __deleted, __op, __source_ts_ms, __kafka_offset) values

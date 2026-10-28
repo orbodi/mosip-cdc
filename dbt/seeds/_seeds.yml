@@ -16,3 +16,24 @@ seeds:
         data_tests:
           - unique
           - not_null
+
+  # Motifs de status_comment (docs/releve-enrolement.md, étape 7) : regle = expression régulière POSIX, sans
+  # distinction de casse ; la règle de plus petite priorité gagne ; AUTRE (sans règle) = message non répertorié.
+  - name: ref_regprc_motifs
+    columns:
+      - name: motif
+        data_tests:
+          - unique
+          - not_null
+      - name: priorite
+        data_tests:
+          - unique
+          - not_null
+
+  # Étapes de traitement (reg_stage_name) : libellé français et ordre du traitement.
+  - name: ref_regprc_stages
+    columns:
+      - name: stage
+        data_tests:
+          - unique
+          - not_null

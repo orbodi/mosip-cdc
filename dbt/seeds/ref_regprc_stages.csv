@@ -1,0 +1,21 @@
+stage,libelle,ordre
+PacketReceiverStage,Réception du paquet,10
+SecurezoneNotificationStage,Notification de zone sécurisée,15
+PacketUploaderStage,Envoi du paquet,20
+PacketValidatorStage,Validation du paquet,30
+PacketClassifierStage,Classement du paquet,35
+QualityClassifierStage,Contrôle de qualité,40
+QualityCheckerStage,Contrôle de qualité,41
+OSIValidatorStage,"Validation de l'agent, du superviseur et du parent",45
+DemoDedupeStage,Déduplication démographique,50
+BioDedupeStage,Déduplication biométrique,55
+BiometricAuthenticationStage,Authentification biométrique,57
+ManualVerificationStage,Vérification manuelle,60
+ManualAdjudicationStage,Vérification manuelle,61
+VerificationStage,Vérification,62
+FmsStage,Contrôle anti-fraude,65
+UinGeneratorStage,Génération du NIU,70
+BiometricExtractionStage,Extraction biométrique,72
+FinalizationStage,Finalisation,75
+PrintingStage,Impression,80
+MessageSenderStage,Notification,85

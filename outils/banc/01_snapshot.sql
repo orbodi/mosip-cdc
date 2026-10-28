@@ -3,6 +3,7 @@
 -- RID fictifs de 29 chiffres : 5 chiffres de centre, 5 de poste, 5 de séquence, 14 d'horodatage d'enrôlement.
 -- 99999 et 88888 : centres absents du référentiel.
 --
+-- status_comment : messages réels de MOSIP (relevé R13) ; R7 porte un message absent du catalogue des motifs (alerte).
 --  R1  10001  NIU (lien), synchronisé deux fois
 --  R2  10001  en cours, vérification manuelle, dernière transaction le 05/07/2026 : bloqué
 --  R3  10002  rejeté à VALIDATE_PACKET, synchronisation REJECTED : refus au poste
@@ -15,15 +16,15 @@
 --  L11 10002  synchronisé le 01/09, jamais reçu (perdu)
 insert into ods.regprc_registration
  (id, reg_type, status_code, latest_trn_type_code, latest_trn_status_code, latest_trn_dtimes, reg_stage_name,
-  cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset) values
- ('10001000010000120261001080000','NEW','PROCESSED','UIN_GENERATOR','PROCESSED','2026-10-01 18:25','UinGeneratorStage','2026-10-01 10:00','2026-10-01 18:25','false','r',1792900000000,0),
- ('10001000010000220260704080000','NEW','PROCESSING','MANUAL_VERIFICATION','SUCCESS','2026-07-05 03:10','ManualVerificationStage','2026-07-04 09:00','2026-07-05 03:10','false','r',1792900000000,1),
- ('10002000010000320261002090000','UPDATE','REJECTED','VALIDATE_PACKET','FAILED','2026-10-02 09:40','PacketValidatorStage','2026-10-02 09:35','2026-10-02 09:40','false','r',1792900000000,2),
- ('99999000010000420261005080000','NEW','PROCESSED','PRINT_SERVICE','SUCCESS','2026-10-06 12:00','PrintingStage','2026-10-05 08:30','2026-10-06 12:00','false','r',1792900000000,3),
- ('88888000010000520261005100000','NEW','FAILED','OSI_VALIDATE','FAILED','2026-10-05 12:00','OSIValidatorStage','2026-10-05 10:20','2026-10-05 12:00','false','r',1792900000000,4),
- ('10002000010000699999999999999','NEW','RESUMABLE','BIOGRAPHIC_VERIFICATION','REPROCESS','2026-10-06 09:00','BioDedupeStage','2026-10-06 08:00','2026-10-06 09:00','false','r',1792900000000,5),
- ('20001000010000720261024070000','LOST','ERROR','UIN_GENERATOR','IN_PROGRESS','2026-10-24 09:00','UinGeneratorStage','2026-10-24 08:00','2026-10-24 09:00','false','r',1792900000000,6),
- ('20001000010000820261008080000','NEW','REJECTED','DEMOGRAPHIC_VERIFICATION','FAILED','2026-10-09 15:00','DemoDedupeStage','2026-10-08 08:10','2026-10-09 15:00','false','r',1792900000000,7);
+  cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset, status_comment) values
+ ('10001000010000120261001080000','NEW','PROCESSED','UIN_GENERATOR','PROCESSED','2026-10-01 18:25','UinGeneratorStage','2026-10-01 10:00','2026-10-01 18:25','false','r',1792900000000,0,'UIN Generated Successfully'),
+ ('10001000010000220260704080000','NEW','PROCESSING','MANUAL_VERIFICATION','SUCCESS','2026-07-05 03:10','ManualVerificationStage','2026-07-04 09:00','2026-07-05 03:10','false','r',1792900000000,1,'Manual verification Sent to queue'),
+ ('10002000010000320261002090000','UPDATE','REJECTED','VALIDATE_PACKET','FAILED','2026-10-02 09:40','PacketValidatorStage','2026-10-02 09:35','2026-10-02 09:40','false','r',1792900000000,2,'Rejected by Supervisor'),
+ ('99999000010000420261005080000','NEW','PROCESSED','PRINT_SERVICE','SUCCESS','2026-10-06 12:00','PrintingStage','2026-10-05 08:30','2026-10-06 12:00','false','r',1792900000000,3,'Printing sent'),
+ ('88888000010000520261005100000','NEW','FAILED','OSI_VALIDATE','FAILED','2026-10-05 12:00','OSIValidatorStage','2026-10-05 10:20','2026-10-05 12:00','false','r',1792900000000,4,'Biometric data - Iris did not match'),
+ ('10002000010000699999999999999','NEW','RESUMABLE','BIOGRAPHIC_VERIFICATION','REPROCESS','2026-10-06 09:00','BioDedupeStage','2026-10-06 08:00','2026-10-06 09:00','false','r',1792900000000,5,null),
+ ('20001000010000720261024070000','LOST','ERROR','UIN_GENERATOR','IN_PROGRESS','2026-10-24 09:00','UinGeneratorStage','2026-10-24 08:00','2026-10-24 09:00','false','r',1792900000000,6,'Packet queued for re-sync 12345678'),
+ ('20001000010000820261008080000','NEW','REJECTED','DEMOGRAPHIC_VERIFICATION','FAILED','2026-10-09 15:00','DemoDedupeStage','2026-10-08 08:10','2026-10-09 15:00','false','r',1792900000000,7,'Biometric Duplicate was Found in ABIS');
 
 insert into ods.regprc_registration_list
  (id, reg_id, reg_type, client_status_code, cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset) values

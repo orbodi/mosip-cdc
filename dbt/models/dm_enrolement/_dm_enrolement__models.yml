@@ -45,6 +45,24 @@ models:
               arguments:
                 values: ['moins_7j', '7_30j', 'plus_30j']
 
+  - name: fait_arret_motif_jour
+    description: "Rejets et échecs par jour de réception, centre, type, étape (reg_stage_name) et motif (status_comment)."
+    columns:
+      - name: devenir
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['rejete', 'echoue']
+
+  - name: stock_en_cours_motif
+    description: "Paquets en cours par centre, étape (reg_stage_name), motif (status_comment) et ancienneté."
+    columns:
+      - name: anciennete
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['moins_7j', '7_30j', 'plus_30j']
+
   - name: fait_delai_jour
     description: "Histogrammes des délais réception → NIU et enrôlement → réception (I8, I9)."
     columns:

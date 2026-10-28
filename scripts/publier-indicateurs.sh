@@ -94,6 +94,26 @@ FROM dm_enrolement.stock_en_cours f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3, 4, 5, 6;
+-- Motifs (migration V9 du backend, décision du 26/10/2026) : étape (reg_stage_name) et motif (status_comment rangé
+-- par seeds/ref_regprc_motifs.csv), jamais le texte de MOSIP. Même résolution des centres.
+DELETE FROM bi.fait_arret_motif_jour;
+INSERT INTO bi.fait_arret_motif_jour (jour, centre_id, type_demande, devenir, stage, stage_libelle, stage_ordre, motif,
+                                      motif_libelle, motif_commentaire, inscriptions)
+SELECT f.jour, coalesce(z.id, h.id), f.type_demande, f.devenir, f.stage, f.stage_libelle, f.stage_ordre, f.motif,
+       f.motif_libelle, f.motif_commentaire, sum(f.inscriptions)
+FROM dm_enrolement.fait_arret_motif_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;
+DELETE FROM bi.stock_en_cours_motif;
+INSERT INTO bi.stock_en_cours_motif (centre_id, type_demande, stage, stage_libelle, stage_ordre, motif, motif_libelle,
+                                     motif_commentaire, anciennete, inscriptions, calcule_le)
+SELECT coalesce(z.id, h.id), f.type_demande, f.stage, f.stage_libelle, f.stage_ordre, f.motif, f.motif_libelle,
+       f.motif_commentaire, f.anciennete, sum(f.inscriptions), max(f.calcule_le)
+FROM dm_enrolement.stock_en_cours_motif f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
 DELETE FROM bi.fait_delai_jour;
 INSERT INTO bi.fait_delai_jour (jour, centre_id, type_demande, mesure, classe_h, paquets)
 SELECT f.jour, coalesce(z.id, h.id), f.type_demande, f.mesure, f.classe_h, sum(f.paquets)

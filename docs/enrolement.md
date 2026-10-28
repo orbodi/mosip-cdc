@@ -44,6 +44,12 @@ registration_list ─┘  mosip-      │                                     �
   `non_recu`.
 - **Étape** : dernière transaction (`latest_trn_type_code`) ; un rejet à `VALIDATE_PACKET` d'un paquet refusé au poste
   devient `REFUS_POSTE`. Libellés et ordre : `seeds/ref_regprc_etapes.csv`.
+- **Motif** (décision du 26/10/2026) : `dwh.motif_inscription`, recalculée en entier à chaque passage pour les
+  inscriptions non `PROCESSED` : étape `reg_stage_name` (libellés `seeds/ref_regprc_stages.csv`) et motif tiré de
+  `status_comment` par les règles de `seeds/ref_regprc_motifs.csv` (expressions régulières sans distinction de casse,
+  la plus petite priorité gagne). Un message qu'aucune règle ne reconnaît compte en « Motif non répertorié » (alerte
+  `assert_enrolement_motifs_inconnus`, qui liste le message, chiffres masqués) : ajouter une ligne au catalogue, prise
+  en compte au passage suivant sans `--full-refresh`. Le texte de MOSIP ne quitte pas le data warehouse.
 - **Centre** : 5 premiers chiffres du RID ; un code absent de `bi.zone` va sous « Centre non référencé ».
 - **Incrémental** : seuls les RID touchés depuis le passage précédent sont recalculés. Les chiffres qui dépendent de
   l'heure (ancienneté des en-cours, synchronisés de plus de 7 jours) sont calculés à chaque passage dans
@@ -55,16 +61,19 @@ registration_list ─┘  mosip-      │                                     �
 | `fait_niu_jour` | `bi.fait_niu_jour` | I2 flux, I3 |
 | `fait_arret_etape_jour` | `bi.fait_arret_etape_jour` (V7) | I5, I6 |
 | `stock_en_cours` | `bi.stock_en_cours` (V7) | I7, « dont bloqués » |
+| `fait_arret_motif_jour` | `bi.fait_arret_motif_jour` (V9) | I5, I6 par étape et motif |
+| `stock_en_cours_motif` | `bi.stock_en_cours_motif` (V9) | I7 par étape et motif |
 | `fait_delai_jour` | `bi.fait_delai_jour` (V7) | I8, I9 |
 | `stock_synchro_non_recue` | `bi.stock_synchro_non_recue` (V7) | I10 |
 | `suivi_dossier` (vue) | `bi.suivi_dossier` (V7), par empreinte, lignes changées seulement | I11 |
 | `fraicheur_enrolement` | `bi.source_fraicheur('enrolement')` | pastille de mise à jour |
 
 **Contrôles bloquants** (rien n'est publié en cas d'échec, pré-inscriptions comprises) : somme des devenirs =
-inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; étapes = Devenir ; histogrammes complets ; codes uniques
-dans les seeds. L'unicité du RID n'est pas un test : clés primaires de l'ODS et index unique de
+inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; étapes = Devenir ; motifs = Devenir ; histogrammes
+complets ; codes uniques dans les seeds. L'unicité du RID n'est pas un test : clés primaires de l'ODS et index unique de
 `dwh.suivi_inscription` (un doublon fait échouer ce modèle ; allègement du 25/10/2026, un passage dbt de 88 s).
-**Alertes** : centre non référencé, statut ou étape inconnus, horodatage du RID illisible, `entry_date` modifiée.
+**Alertes** : centre non référencé, statut ou étape inconnus, horodatage du RID illisible, `entry_date` modifiée,
+commentaire de MOSIP non répertorié, étape `reg_stage_name` absente de `ref_regprc_stages.csv`.
 
 ## Mise en service
 
@@ -122,11 +131,24 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
     - comparer les totaux au relevé (`docs/releve-enrolement.md`, étapes 2 et 5) : écart de quelques centaines au plus ;
     - aucune colonne `uin` ni `civil_registry_number` dans l'ODS, le lake ni les messages Kafka.
 
+### Motifs (lot 5c, 27/10/2026)
+
+1. Connecteur : `status_comment` ajouté à `column.include.list` et à l'instantané de `regprc.registration`, après
+   `ALTER TABLE ods.regprc_registration ADD COLUMN status_comment` (script 14).
+2. Rattrapage unique des inscriptions captées avant : `scripts/rattraper-status-comment.sh`.
+3. Backend : migration V9 (`bi.fait_arret_motif_jour`, `bi.stock_en_cours_motif`) appliquée au redémarrage de l'API,
+   route `GET /api/v1/enrolement/motifs`.
+4. **Sous le verrou de la chaîne analytique** (aucun passage entre les deux) : `git pull` de `mosip-cdc` (nouveaux
+   modèles et publication), puis droits de `publisher` sur les tables V9 (script 16, par `bi_owner`). Sans les droits,
+   la publication échouerait (transaction annulée, chiffres précédents gardés) jusqu'à leur octroi.
+
 ## Exploitation et reprise
 
 | Situation | Action |
 |---|---|
 | `ref_regprc_statuts.csv` ou `ref_regprc_etapes.csv` modifié | `dbt build --full-refresh --select suivi_inscription+`, puis `scripts/charger-suivi.sh` |
+| `ref_regprc_motifs.csv` ou `ref_regprc_stages.csv` modifié | rien : pris en compte au passage suivant (`motif_inscription` est recalculée en entier) |
+| Alerte « commentaire non répertorié » | ajouter le message (une expression régulière, sans chiffres variables) et sa traduction à `ref_regprc_motifs.csv`, avec une priorité libre ; commiter, `git pull` sur le serveur |
 | `dbt --full-refresh` de `suivi_inscription` | `scripts/charger-suivi.sh` (toutes les lignes ont une nouvelle `maj_le`) |
 | Clé `SUIVI_HMAC_CLE` changée | mettre la nouvelle clé dans `compose/.env`, puis `scripts/charger-suivi.sh --vider`, puis redémarrer l'API (`docker compose -f docker-compose.dashboard.yml up -d api`, qui relit la clé) |
 | Suivi d'un dossier : « n'est pas configuré » (503) | l'API n'a pas reçu `SUIVI_HMAC_CLE` : vérifier `compose/.env` et la ligne `SUIVI_HMAC_CLE` de `docker-compose.dashboard.yml`, puis `up -d api` |
@@ -142,5 +164,5 @@ Retour arrière : supprimer la source `mosip-regprc-cdc`, puis le slot côté MO
 
 ## Banc de test
 
-`outils/banc/README.md` : PostgreSQL jetable, vraies migrations du backend (V1 à V7), vrais scripts de droits et de
+`outils/banc/README.md` : PostgreSQL jetable, vraies migrations du backend (V1 à V9), vrais scripts de droits et de
 publication ; les connecteurs sont simulés par des `insert` dans l'ODS.
