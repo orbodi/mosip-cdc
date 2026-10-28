@@ -151,6 +151,7 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
 |---|---|
 | `ref_regprc_statuts.csv` ou `ref_regprc_etapes.csv` modifié | `dbt build --full-refresh --select suivi_inscription+`, puis `scripts/charger-suivi.sh` |
 | `ref_regprc_motifs.csv` ou `ref_regprc_stages.csv` modifié | rien : pris en compte au passage suivant (`motif_inscription` est recalculée en entier) |
+| Colonne ajoutée ou retirée dans un seed (`dbt/seeds/*.csv`) | dbt ne modifie pas la table d'un seed : `flock /tmp/mosip-analytique.lock docker compose run --rm -T dbt seed --full-refresh --select <seed>` (dans `compose/`), sinon le passage échoue (« column … does not exist ») et rien n'est publié (incident du 28/10/2026) |
 | Alerte « commentaire non répertorié » | ajouter le message (une expression régulière, sans chiffres variables) et sa traduction à `ref_regprc_motifs.csv`, avec une priorité libre ; commiter, `git pull` sur le serveur |
 | `dbt --full-refresh` de `suivi_inscription` | `scripts/charger-suivi.sh` (toutes les lignes ont une nouvelle `maj_le`) |
 | Clé `SUIVI_HMAC_CLE` changée | mettre la nouvelle clé dans `compose/.env`, puis `scripts/charger-suivi.sh --vider`, puis redémarrer l'API (`docker compose -f docker-compose.dashboard.yml up -d api`, qui relit la clé) |
