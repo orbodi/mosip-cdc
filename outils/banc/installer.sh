@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Banc de test de la chaîne enrôlement : crée une base mosip_bi JETABLE sur un PostgreSQL local (jamais celui du
-# serveur), avec les rôles de la BD traitement, le contrat bi (migrations Flyway V1 à V6 du backend appliquées par
+# serveur), avec les rôles de la BD traitement, le contrat bi (migrations Flyway du backend appliquées par
 # bi_owner), le lake et l'ODS des pré-inscriptions et un petit référentiel MOSIP (2 régions, 3 centres).
 #
 #   PGHOST=/tmp PGUSER=postgres outils/banc/installer.sh
@@ -35,7 +35,8 @@ $P -d mosip_bi -c "create schema lake authorization ingest_writer; create schema
 $P -d mosip_bi -f "$CDC/sql/traitement/17_prerequis_proprietaire.sql" >/dev/null
 
 # Contrat bi : migrations du backend, comme Flyway au démarrage de l'API
-for v in "$REPORTING"/backend/src/main/resources/db/migration/V*.sql; do en bi_owner -f "$v"; done
+# Dans l'ordre des versions, comme Flyway (V10 après V9, et non après V1 comme le tri alphabétique)
+while read -r v; do en bi_owner -f "$v"; done < <(ls "$REPORTING"/backend/src/main/resources/db/migration/V*.sql | sort -V)
 en bi_owner -f "$CDC/sql/traitement/09_droits_bi.sql" -f "$CDC/sql/traitement/12_droits_bi_zone.sql" \
   -f "$CDC/sql/traitement/13_droits_bi_profil_preinscriptions.sql" -f "$CDC/sql/traitement/16_droits_bi_enrolement.sql"
 

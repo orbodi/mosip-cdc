@@ -18,6 +18,7 @@ select
     coalesce(m.motif, 'AUTRE')                              as motif,
     coalesce(mo.libelle, 'Motif non répertorié')            as motif_libelle,
     mo.commentaire                                          as motif_commentaire,
+    mo.piste                                                as motif_piste,
     case
         when s.derniere_transaction_le >= now() - interval '7 days'  then 'moins_7j'
         when s.derniere_transaction_le >= now() - interval '30 days' then '7_30j'
@@ -30,4 +31,4 @@ left join {{ ref('motif_inscription') }} m on m.rid = s.rid
 left join {{ ref('ref_regprc_stages') }} st on st.stage = m.stage
 left join {{ ref('ref_regprc_motifs') }} mo on mo.motif = coalesce(m.motif, 'AUTRE')
 where s.devenir = 'en_cours'
-group by 1, 2, 3, 4, 5, 6, 7, 8, 9
+group by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10

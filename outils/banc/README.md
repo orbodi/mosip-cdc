@@ -41,9 +41,9 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
 - **Étapes** : rejetés = Refus au poste 1 + Déduplication démographique 1 ; échoués = Validation opérateur et
   superviseur 1 ; en cours = Réception du paquet 1 + Génération du NIU 1 (le dossier bloqué en vérification manuelle
   depuis le 05/07 a reçu son NIU dans le flux).
-- **Motifs** (27/10/2026) : rejetés = Refusé par le superviseur du centre 1 + Doublon (ABIS) 1 ; échoués =
-  Vérification biométrique non concordante 1 ; en cours = Reçu, en attente de traitement 1 + Motif non répertorié 1
-  (R7, message absent du catalogue).
+- **Motifs** (28/10/2026) : rejetés = Rejeté par le superviseur du centre 1 + Doublon biométrique trouvé par l'ABIS 1 ;
+  échoués = Iris non concordant 1 ; en cours = Paquet reçu, en attente de traitement 1 + Motif non répertorié 1 (R7,
+  message absent du catalogue) ; chaque motif publié avec sa ligne « À vérifier » (`motif_piste`).
 - **Contrôles** : 0 échec ; 6 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
   1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié.
 - **Suivi d'un dossier** : 11 lignes dans `bi.suivi_dossier`, retrouvées par

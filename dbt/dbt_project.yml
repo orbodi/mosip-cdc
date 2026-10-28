@@ -49,6 +49,6 @@ seeds:
     ref_regprc_etapes:
       +column_types: {code: text, libelle: text, ordre: integer}
     ref_regprc_motifs:
-      +column_types: {motif: text, libelle: text, commentaire: text, regle: text, priorite: integer}
+      +column_types: {motif: text, libelle: text, commentaire: text, regle: text, priorite: integer, piste: text}
     ref_regprc_stages:
       +column_types: {stage: text, libelle: text, ordre: integer}

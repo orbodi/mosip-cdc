@@ -1,23 +1,30 @@
-motif,libelle,commentaire,regle,priorite
-REFUS_SUPERVISEUR,Refusé par le superviseur du centre,Rejected by Supervisor,^Rejected by Supervisor,10
-DOUBLON_ABIS,"Doublon : empreintes, iris ou visage déjà enregistrés",Biometric Duplicate was Found in ABIS,Biometric Duplicate was Found,20
-DOUBLON_VERIFICATEUR,Doublon confirmé par un vérificateur,Match Found by Manual Verifier,Match Found by Manual Verifier,30
-DOUBLON_SANS_NIU,"Doublon trouvé, mais le dossier correspondant n'a pas de NIU",UIN not found for the matched RID,UIN not found.*matched RID,35
-DONNEES_INVALIDES_NIU,Données du dossier invalides à la création du NIU,UIN Generation failed - Invalid Input Parameter,UIN Generation failed - Invalid Input Parameter,40
-PARENT_ABSENT,NIU ou RID du parent absent du dossier,UIN or RID of Parent Not Found in Packet,Parent Not Found,50
-BIOMETRIE_NON_CONCORDANTE,"Vérification biométrique de l'agent, du superviseur ou du parent non concordante",Biometric data did not match,^Biometric data.*did not match,60
-SANS_NIU_OU_BIOMETRIE,"Agent, superviseur ou parent sans NIU ou sans biométrie enregistrée",Biometric data / UIN not available in database,not available in database,70
-BIOMETRIE_ABSENTE,Biométrie du demandeur absente du dossier,Unable to Find Applicant CBEFF,Unable to Find Applicant CBEFF,75
-PAQUET_PERDU,Paquet perdu ou abîmé pendant le transfert,Packet not found in Landing Zone / Packet Upload Failed,not found in landing.?zone|Packet Upload Failed|Hash Code Validation Failed,80
-PAQUET_INVALIDE,Paquet invalide,Packet validation failed,Packet validation failed,90
-ABIS_INCOHERENT,Réponse incohérente de l'ABIS,No / Multiple Match was Found for the Biometrics Received,(No|Multiple) Match was Found for the Biometrics,100
-DOUBLON_DEMO_POSSIBLE,"Doublon possible sur l'identité, à vérifier",Potential Demo Match was Found,Potential Demo Match was Found,105
-FILE_VERIF_MANUELLE,En attente de vérification manuelle (doublon possible),Manual verification Sent to queue,Manual verification Sent to queue,110
-VERIF_MANUELLE_SANS_DOUBLON,"Pas de doublon selon le vérificateur, traitement à poursuivre",Match Not Found by Manual Verifier,Match Not Found by Manual Verifier,115
-ERREUR_VERIF_MANUELLE,Erreur pendant la vérification manuelle,Error in manual verification,Error in manual verification,120
-RECU_EN_ATTENTE,"Reçu, en attente de traitement",Packet is Uploaded to Landing Zone / Packet Store,Packet is Uploaded to,130
-DEDOUBLONNAGE_EN_COURS,Recherche de doublon biométrique en cours,Biometric Deduplication In-Progress,Biometric Deduplication In.Progress,140
-NIU_DEJA_EXISTANT,"NIU déjà présent dans le registre, à régulariser",Received ID record already exists error from idrepo,record already exists,150
-ETAPE_FRANCHIE,"Étape franchie, en attente de la suivante",Packet Validation is Successful / Unique Match was Found…,"successful|sucessfully|Unique Match was Found|Notification.{1,3}received",160
-ERREUR_TECHNIQUE,Erreur technique,Unknown exception / NGINX url is not accessible / Response Failed…,exception|nginx|unknown error|response failed|error|RPR-,170
-AUTRE,Motif non répertorié,,,999
+motif,libelle,commentaire,regle,priorite,piste
+REFUS_SUPERVISEUR,Rejeté par le superviseur du centre,Rejected by Supervisor,^Rejected by Supervisor,10,Le superviseur a refusé le paquet au poste ; MOSIP ne transmet pas sa raison. La personne doit se réenrôler.
+DOUBLON_ABIS,Doublon biométrique trouvé par l'ABIS,Biometric Duplicate was Found in ABIS,Biometric Duplicate was Found,20,"La personne est déjà enregistrée (empreintes, iris ou visage) : demande en double."
+DOUBLON_VERIFICATEUR,Doublon confirmé par le vérificateur,Match Found by Manual Verifier,Match Found by Manual Verifier,30,Après comparaison manuelle avec un dossier existant : même personne.
+DOUBLON_SANS_NIU,"Doublon trouvé, sans NIU pour le dossier correspondant",UIN not found for the matched RID,UIN not found.*matched RID,35,Le dossier déjà enregistré n'a pas abouti : vérifier son état.
+DONNEES_INVALIDES_NIU,Création du NIU refusée : donnée invalide,UIN Generation failed - Invalid Input Parameter,UIN Generation failed - Invalid Input Parameter,40,"MOSIP nomme le champ en cause (date de délivrance, attributs vérifiés…) : erreur de saisie ou de format."
+PARENT_ABSENT,NIU ou RID du parent absent du paquet,UIN or RID of Parent Not Found in Packet,Parent Not Found,50,Inscription d'un enfant : le numéro du parent n'a pas été saisi au poste.
+EMPREINTES_NON_CONCORDANTES,Empreintes non concordantes,Biometric data - Finger did not match,^Biometric data - Finger did not match,55,"Qualité de capture des empreintes au poste, ou empreintes de la personne qui valide (agent, superviseur ou parent) mal enregistrées ; MOSIP ne dit pas laquelle."
+IRIS_NON_CONCORDANT,Iris non concordant,Biometric data - Iris did not match,^Biometric data - Iris did not match,56,"Qualité de capture de l'iris au poste, ou iris de la personne qui valide (agent, superviseur ou parent) mal enregistré ; MOSIP ne dit pas laquelle."
+VISAGE_NON_CONCORDANT,Visage non concordant,Biometric data - FACE did not match,^Biometric data - FACE did not match,57,"Qualité de la photo au poste, ou photo de la personne qui valide (agent, superviseur ou parent) mal enregistrée ; MOSIP ne dit pas laquelle."
+BIOMETRIE_NON_CONCORDANTE,Authentification biométrique échouée (type non précisé),Biometric data did not match,^Biometric data.*did not match,60,"Contrôle de la personne qui valide le paquet (agent, superviseur ou parent pour un enfant) ; MOSIP ne dit pas laquelle."
+NIU_VALIDEUR_INTROUVABLE,NIU de la personne qui valide introuvable,UIN not available in database,UIN not available in database,70,"L'agent, le superviseur ou le parent n'a pas de NIU dans le registre."
+BIOMETRIE_VALIDEUR_ABSENTE,Biométrie de la personne qui valide absente du registre,Biometric data … not available in database,Biometric data.*not available in database,72,"Le NIU existe, mais sans empreintes ou sans iris enregistrés."
+BIOMETRIE_ABSENTE,Biométrie du demandeur absente du paquet,Unable to Find Applicant CBEFF for Adult,Unable to Find Applicant CBEFF,75,Paquet d'adulte sans fichier biométrique : capture incomplète au poste.
+PAQUET_INTROUVABLE,Paquet introuvable à l'arrivée,Packet not found in Landing Zone,not found in landing.?zone,80,Synchronisé mais jamais déposé sur le serveur : le renvoyer depuis le poste.
+ENVOI_ECHOUE,Envoi du paquet échoué,Packet Upload Failed,Packet Upload Failed,82,Coupure pendant l'envoi : le renvoyer depuis le poste.
+PAQUET_ALTERE,Paquet altéré (contrôle d'intégrité échoué),Packet Hash Code Validation Failed,Hash Code Validation Failed,84,Fichier abîmé pendant le transfert : le renvoyer depuis le poste.
+PAQUET_INVALIDE,Paquet invalide,Packet validation failed in packet manager,Packet validation failed,90,Contenu du paquet non conforme : à examiner par l'équipe MOSIP.
+ABIS_SANS_CORRESPONDANCE,L'ABIS ne retrouve pas la biométrie envoyée,No Match was Found for the Biometrics Received,No Match was Found for the Biometrics,100,Incohérence de l'ABIS : à signaler à l'équipe MOSIP.
+ABIS_PLUSIEURS_CORRESPONDANCES,L'ABIS trouve plusieurs correspondances,Multiple Match was Found for the Biometrics Received,Multiple Match was Found for the Biometrics,101,Incohérence de l'ABIS : à signaler à l'équipe MOSIP.
+DOUBLON_DEMO_POSSIBLE,Doublon démographique possible,Potential Demo Match was Found,Potential Demo Match was Found,105,Mêmes nom et date de naissance qu'un dossier existant : vérification à venir.
+FILE_VERIF_MANUELLE,En file d'attente de vérification manuelle,Manual verification Sent to queue,Manual verification Sent to queue,110,Doublon possible : un vérificateur doit trancher.
+VERIF_MANUELLE_SANS_DOUBLON,Aucun doublon selon le vérificateur,Match Not Found by Manual Verifier,Match Not Found by Manual Verifier,115,Le traitement doit reprendre.
+ERREUR_VERIF_MANUELLE,Erreur lors de la vérification manuelle,Error in manual verification,Error in manual verification,120,Dossier bloqué dans la file : à signaler à l'équipe MOSIP.
+RECU_EN_ATTENTE,"Paquet reçu, en attente de traitement",Packet is Uploaded to Landing Zone / Packet Store,Packet is Uploaded to,130,Normal s'il est récent.
+DEDOUBLONNAGE_EN_COURS,Déduplication biométrique en cours (ABIS),Biometric Deduplication In-Progress,Biometric Deduplication In.Progress,140,Normal s'il est récent.
+NIU_DEJA_EXISTANT,Dossier déjà présent dans le registre d'identité,Received ID record already exists error from idrepo,record already exists,150,Conflit à régulariser par l'équipe MOSIP.
+ETAPE_FRANCHIE,"Étape réussie, en attente de l'étape suivante",… is Successful / Unique Match was Found / Notification received,"successful|sucessfully|Unique Match was Found|Notification.{1,3}received",160,Normal s'il est récent ; bloqué au-delà de 30 jours.
+ERREUR_TECHNIQUE,Erreur technique de MOSIP,Unknown exception / NGINX url is not accessible / Response Failed…,exception|nginx|unknown error|response failed|error|RPR-,170,Service de MOSIP indisponible ou en erreur : à signaler à l'équipe MOSIP.
+AUTRE,Motif non répertorié,,,999,Message de MOSIP pas encore traduit : il sera ajouté au catalogue.

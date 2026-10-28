@@ -49,7 +49,10 @@ registration_list ─┘  mosip-      │                                     �
   `status_comment` par les règles de `seeds/ref_regprc_motifs.csv` (expressions régulières sans distinction de casse,
   la plus petite priorité gagne). Un message qu'aucune règle ne reconnaît compte en « Motif non répertorié » (alerte
   `assert_enrolement_motifs_inconnus`, qui liste le message, chiffres masqués) : ajouter une ligne au catalogue, prise
-  en compte au passage suivant sans `--full-refresh`. Le texte de MOSIP ne quitte pas le data warehouse.
+  en compte au passage suivant sans `--full-refresh`. Le texte de MOSIP ne quitte pas le data warehouse. Pour chaque
+  motif, le catalogue donne un libellé qui traduit fidèlement le message de MOSIP (un message distinct = un motif, par
+  exemple empreintes, iris et visage séparés) et une ligne « À vérifier » (`piste`, publiée en `motif_piste`, V10) :
+  ce que le message veut dire et où chercher (décision du 28/10/2026).
 - **Centre** : 5 premiers chiffres du RID ; un code absent de `bi.zone` va sous « Centre non référencé ».
 - **Incrémental** : seuls les RID touchés depuis le passage précédent sont recalculés. Les chiffres qui dépendent de
   l'heure (ancienneté des en-cours, synchronisés de plus de 7 jours) sont calculés à chaque passage dans

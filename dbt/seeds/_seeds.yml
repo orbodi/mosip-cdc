@@ -19,6 +19,7 @@ seeds:
 
   # Motifs de status_comment (docs/releve-enrolement.md, étape 7) : regle = expression régulière POSIX, sans
   # distinction de casse ; la règle de plus petite priorité gagne ; AUTRE (sans règle) = message non répertorié.
+  # libelle : traduction fidèle du message de MOSIP ; piste : ce qu'il faut vérifier (décision du 28/10/2026).
   - name: ref_regprc_motifs
     columns:
       - name: motif

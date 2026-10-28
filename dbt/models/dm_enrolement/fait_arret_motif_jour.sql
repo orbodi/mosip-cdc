@@ -4,8 +4,8 @@
   Une ligne par jour de réception, centre, type de demande, devenir (rejete, echoue), étape et motif.
 
   - stage_libelle, stage_ordre : seeds/ref_regprc_stages.csv, ou le nom de l'étape et 999 si elle n'y est pas.
-  - motif_libelle, motif_commentaire : seeds/ref_regprc_motifs.csv (le commentaire est le message type de MOSIP du
-    catalogue, jamais le texte de l'inscription).
+  - motif_libelle, motif_commentaire, motif_piste : seeds/ref_regprc_motifs.csv (le commentaire est le message type
+    de MOSIP du catalogue, jamais le texte de l'inscription ; la piste dit quoi vérifier, décision du 28/10/2026).
   - Une inscription sans ligne dans motif_inscription (devenue PROCESSED entre les deux modèles) compte en AUTRE : les
     totaux restent ceux du Devenir.
   - Contrôle (assert_enrolement_motifs_egal_devenir) : par devenir, la somme égale les rejetees et echouees de
@@ -24,10 +24,11 @@ select
     coalesce(m.motif, 'AUTRE')                              as motif,
     coalesce(mo.libelle, 'Motif non répertorié')            as motif_libelle,
     mo.commentaire                                          as motif_commentaire,
+    mo.piste                                                as motif_piste,
     cast(count(*) as integer)                               as inscriptions
 from {{ ref('suivi_inscription') }} s
 left join {{ ref('motif_inscription') }} m on m.rid = s.rid
 left join {{ ref('ref_regprc_stages') }} st on st.stage = m.stage
 left join {{ ref('ref_regprc_motifs') }} mo on mo.motif = coalesce(m.motif, 'AUTRE')
 where s.devenir in ('rejete', 'echoue')
-group by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+group by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
