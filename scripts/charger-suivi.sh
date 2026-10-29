@@ -42,10 +42,10 @@ BEGIN
         ecrit AS (
             INSERT INTO bi.suivi_dossier (empreinte, centre_id, type_demande, enrole_le, synchronise_le, refus_poste,
                                           recu_le, niu_le, devenir, etape, etape_libelle, etape_statut,
-                                          derniere_transaction_le, maj_le)
+                                          derniere_transaction_le, motif, maj_le)
             SELECT hmac(s.rid, current_setting('bi.cle_suivi'), 'sha256'), coalesce(z.id, h.id), s.type_demande,
                    s.enrole_le, s.synchronise_le, s.refus_poste, s.recu_le, s.niu_le, s.devenir, s.etape,
-                   s.etape_libelle, s.etape_statut, s.derniere_transaction_le, s.maj_le
+                   s.etape_libelle, s.etape_statut, s.derniere_transaction_le, s.motif, s.maj_le
             FROM lot s
             CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
             LEFT JOIN bi.zone z ON z.code = s.code_centre AND z.niveau = 'centre'
@@ -55,7 +55,7 @@ BEGIN
                    refus_poste = excluded.refus_poste, recu_le = excluded.recu_le, niu_le = excluded.niu_le,
                    devenir = excluded.devenir, etape = excluded.etape, etape_libelle = excluded.etape_libelle,
                    etape_statut = excluded.etape_statut, derniere_transaction_le = excluded.derniere_transaction_le,
-                   maj_le = excluded.maj_le
+                   motif = excluded.motif, maj_le = excluded.maj_le
             RETURNING 1
         )
         SELECT count(*), max(rid) INTO n, dernier FROM lot WHERE (SELECT count(*) FROM ecrit) >= 0;

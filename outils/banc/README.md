@@ -47,6 +47,10 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
 - **Contrôles** : 0 échec ; 6 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
   1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié.
 - **Suivi d'un dossier** : 11 lignes dans `bi.suivi_dossier`, retrouvées par
-  `hmac('<RID>', 'cle-du-banc', 'sha256')`, jamais avec une autre clé.
+  `hmac('<RID>', 'cle-du-banc', 'sha256')`, jamais avec une autre clé ; 6 avec un motif (29/10/2026 : rejetés
+  REFUS_SUPERVISEUR et DOUBLON_ABIS, échoué IRIS_NON_CONCORDANT, en cours RECU_EN_ATTENTE et AUTRE, non classé AUTRE),
+  aucun pour les 3 NIU et les 2 non reçus ; 29 lignes dans `bi.ref_motif`. `scripts/rattraper-motif-suivi.sh`, avec un
+  `compose/.env` de banc (`TRAITEMENT_PG_HOST=/tmp`, `PUBLISHER_PASSWORD=banc`, `SUIVI_HMAC_CLE=cle-du-banc`), remet
+  les 6 motifs effacés puis, relancé, n'en touche aucun.
 - **Reconstruction** : `--full-refresh` et un passage sans nouvel événement donnent des tables identiques à celles du
   passage incrémental.

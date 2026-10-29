@@ -128,6 +128,10 @@ FROM dm_enrolement.stock_synchro_non_recue f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2;
+-- Catalogue des motifs (V11) : libellés lus par l'API du suivi d'un dossier, remplacés à chaque passage.
+DELETE FROM bi.ref_motif;
+INSERT INTO bi.ref_motif (motif, libelle, commentaire, piste)
+SELECT motif, libelle, commentaire, piste FROM dm_enrolement.ref_motif;
 -- Suivi d'un dossier : seulement les lignes écrites par dbt depuis la dernière publication (maj_le), en upsert sur
 -- l'empreinte du RID. Au-delà de 200 000 lignes (premier chargement, dbt --full-refresh), rien n'est fait ici :
 -- scripts/charger-suivi.sh charge par lots, hors de cette transaction.
@@ -139,10 +143,11 @@ WHERE maj_le > (SELECT coalesce(max(maj_le), '-infinity') FROM bi.suivi_dossier)
 \echo 'suivi d''un dossier non publié : plus de 200 000 lignes à écrire, lancer scripts/charger-suivi.sh'
 \else
 INSERT INTO bi.suivi_dossier (empreinte, centre_id, type_demande, enrole_le, synchronise_le, refus_poste, recu_le,
-                              niu_le, devenir, etape, etape_libelle, etape_statut, derniere_transaction_le, maj_le)
+                              niu_le, devenir, etape, etape_libelle, etape_statut, derniere_transaction_le, motif,
+                              maj_le)
 SELECT hmac(s.rid, :'cle_suivi', 'sha256'), coalesce(z.id, h.id), s.type_demande, s.enrole_le, s.synchronise_le,
        s.refus_poste, s.recu_le, s.niu_le, s.devenir, s.etape, s.etape_libelle, s.etape_statut,
-       s.derniere_transaction_le, s.maj_le
+       s.derniere_transaction_le, s.motif, s.maj_le
 FROM dm_enrolement.suivi_dossier s
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = s.code_centre AND z.niveau = 'centre'
@@ -152,7 +157,7 @@ ON CONFLICT (empreinte) DO UPDATE
        synchronise_le = excluded.synchronise_le, refus_poste = excluded.refus_poste, recu_le = excluded.recu_le,
        niu_le = excluded.niu_le, devenir = excluded.devenir, etape = excluded.etape,
        etape_libelle = excluded.etape_libelle, etape_statut = excluded.etape_statut,
-       derniere_transaction_le = excluded.derniere_transaction_le, maj_le = excluded.maj_le;
+       derniere_transaction_le = excluded.derniere_transaction_le, motif = excluded.motif, maj_le = excluded.maj_le;
 \endif
 \else
 \echo 'suivi d''un dossier non publié : SUIVI_HMAC_CLE absente de compose/.env'

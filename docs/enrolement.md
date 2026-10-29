@@ -145,12 +145,25 @@ de l'ODS et de `bi`, `dbt build` ou la publication échouent, et les pré-inscri
    modèles et publication), puis droits de `publisher` sur les tables V9 (script 16, par `bi_owner`). Sans les droits,
    la publication échouerait (transaction annulée, chiffres précédents gardés) jusqu'à leur octroi.
 
+### Motif dans le suivi d'un dossier (29/10/2026)
+
+Le suivi d'un dossier donne le motif de MOSIP d'un dossier rejeté, échoué ou en cours. `bi.suivi_dossier` n'en garde
+que le code (colonne `motif`) ; libellé et message type sont dans `bi.ref_motif`, republiée à chaque passage depuis
+`dm_enrolement.ref_motif` : un libellé corrigé s'applique sans republier les dossiers.
+
+1. Backend : migration V11 (`bi.suivi_dossier.motif`, `bi.ref_motif`) appliquée au redémarrage de l'API.
+2. **Sous le verrou de la chaîne analytique** : `git pull` de `mosip-cdc`, puis droits de `publisher` sur
+   `bi.ref_motif` (script 16, par `bi_owner`). Sans les droits, la publication échouerait (transaction annulée).
+3. Rattrapage unique des dossiers déjà publiés (la publication ne reprend que les dossiers modifiés) :
+   `scripts/rattraper-motif-suivi.sh` (≈ 350 000 dossiers, empreinte calculée pour ceux qui ont un motif ; relançable,
+   ne réécrit que les motifs qui changent).
+
 ## Exploitation et reprise
 
 | Situation | Action |
 |---|---|
 | `ref_regprc_statuts.csv` ou `ref_regprc_etapes.csv` modifié | `dbt build --full-refresh --select suivi_inscription+`, puis `scripts/charger-suivi.sh` |
-| `ref_regprc_motifs.csv` ou `ref_regprc_stages.csv` modifié | rien : pris en compte au passage suivant (`motif_inscription` est recalculée en entier) |
+| `ref_regprc_motifs.csv` ou `ref_regprc_stages.csv` modifié | rien pour les blocs et les libellés du suivi : pris en compte au passage suivant (`motif_inscription` recalculée en entier, `bi.ref_motif` republiée) ; si une **règle** (colonne `regle`) range autrement des messages déjà vus : `scripts/rattraper-motif-suivi.sh` pour le motif des dossiers suivis |
 | Colonne ajoutée ou retirée dans un seed (`dbt/seeds/*.csv`) | dbt ne modifie pas la table d'un seed : `flock /tmp/mosip-analytique.lock docker compose run --rm -T dbt seed --full-refresh --select <seed>` (dans `compose/`), sinon le passage échoue (« column … does not exist ») et rien n'est publié (incident du 28/10/2026) |
 | Alerte « commentaire non répertorié » | ajouter le message (une expression régulière, sans chiffres variables) et sa traduction à `ref_regprc_motifs.csv`, avec une priorité libre ; commiter, `git pull` sur le serveur |
 | `dbt --full-refresh` de `suivi_inscription` | `scripts/charger-suivi.sh` (toutes les lignes ont une nouvelle `maj_le`) |
