@@ -12,7 +12,7 @@ DBT_ARGS=()
 
 if python3 "$CDC/outils/banc/minidbt.py" "$CDC/dbt" "host=$HOTE dbname=mosip_bi user=dbt_runner" "${DBT_ARGS[@]}" \
      > "$JOURNAL" 2>&1; then statut=0; else statut=$?; fi
-grep -E "^modèle .*(regprc|suivi|enrolement|niu_jour|arret|stock|delai)|ÉCHEC|ALERTE|tests :|Error" "$JOURNAL" || true
+grep -E "^modèle .*(regprc|suivi|enrolement|niu_jour|niu_profil|centre_region|arret|stock|delai)|ÉCHEC|ALERTE|tests :|Error" "$JOURNAL" || true
 [ "$statut" -eq 0 ] || { echo "dbt en échec : rien n'est publié (journal : $JOURNAL)"; exit "$statut"; }
 [[ " $* " == *" --sans-publication "* ]] && exit 0
 

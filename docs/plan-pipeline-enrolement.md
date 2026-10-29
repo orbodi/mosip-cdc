@@ -220,7 +220,14 @@ garder la cadence de 5 minutes avec les pré-inscriptions. À mesurer au premier
 
 ## Lot 6 : enrichissement démographique (phase 2)
 
-Bloqué par : **nom et point d'accès de l'API MOSIP qui prend un RID**.
+**Livré le 29/10/2026** (mise en service : `docs/enrolement.md`, « Profil des NIU par l'ID Repository »). API : ID
+Repository, `/idrepository/v1/identity/idvid/{RID}`, appelé avec le RID (accepté, vérifié par le responsable le
+29/10/2026), jamais avec le NIU ; seuls les NIU sont enrichis (l'ID Repository ne connaît que les identités créées).
+Écarts au plan ci-dessous : ODS `ods.regprc_enrichissement` (nom des autres tables de l'enrôlement) ; un seul modèle
+`dm_enrolement.fait_niu_profil_jour`, regroupé à la publication en `bi.fait_niu_profil_jour` et
+`bi.fait_niu_nationalite_jour` ; pas de colonne démographique dans `suivi_inscription` ; région du centre.
+
+Plan initial :
 - jobs Spark sur le modèle des pré-inscriptions (`enrichissement_flux.py`, `rattrapage_stock.py`) : genre, année et
   mois de naissance, nationalité seulement ;
 - topic compacté `mosip.regprc.enrichissement`, ODS `ods.enrichissement_inscription` ;

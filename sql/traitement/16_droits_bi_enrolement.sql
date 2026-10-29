@@ -1,4 +1,4 @@
--- Publication de l'enrôlement dans le contrat bi (tables créées par les migrations V1 à V3, V7, V9 et V11 du backend).
+-- Publication de l'enrôlement dans le contrat bi (tables créées par les migrations V1 à V4, V7, V9 et V11 du backend).
 -- À exécuter par bi_owner, APRÈS le démarrage de l'API qui a appliqué V11 (relançable : GRANT est idempotent) :
 --   PGPASSWORD="$BI_OWNER_PASSWORD" psql -h 172.16.44.108 -U bi_owner -d mosip_bi -f sql/traitement/16_droits_bi_enrolement.sql
 \set ON_ERROR_STOP on
@@ -11,3 +11,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON bi.suivi_dossier TO publisher;   -- DELE
 GRANT SELECT, INSERT, DELETE ON bi.fait_arret_motif_jour, bi.stock_en_cours_motif TO publisher;
 -- V11 (motif dans le suivi d'un dossier, 29/10/2026) : catalogue des motifs remplacé à chaque passage
 GRANT SELECT, INSERT, DELETE ON bi.ref_motif TO publisher;
+-- Lot 6 (profil des NIU, ID Repository, 29/10/2026) : table de la migration V4, remplacée à chaque passage, comme
+-- bi.fait_niu_nationalite_jour (V7) ci-dessus
+GRANT SELECT, INSERT, DELETE ON bi.fait_niu_profil_jour TO publisher;

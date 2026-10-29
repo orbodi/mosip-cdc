@@ -44,8 +44,14 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
 - **Motifs** (28/10/2026) : rejetés = Rejeté par le superviseur du centre 1 + Doublon biométrique trouvé par l'ABIS 1 ;
   échoués = Iris non concordant 1 ; en cours = Paquet reçu, en attente de traitement 1 + Motif non répertorié 1 (R7,
   message absent du catalogue) ; chaque motif publié avec sa ligne « À vérifier » (`motif_piste`).
-- **Contrôles** : 0 échec ; 6 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
-  1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié.
+- **Contrôles** : 0 échec ; 7 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
+  1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié,
+  1 genre de l'ID Repository non reconnu (« Inconnu », R7).
+- **Profil des NIU** (lot 6, 29/10/2026) : 3 NIU dans `bi.fait_niu_profil_jour` comme dans `bi.fait_niu_jour` :
+  01/10 Savanes (R1) F 36-45 ; 06/10 Hors référentiel (centre 99999) I inconnu (pas encore enrichi) ; 25/10 Savanes
+  H 15-18. `bi.fait_niu_nationalite_jour` : Togo (code TOGO de la liste « nationality »), Non renseignée, BENIN
+  (absent de la liste, gardé tel quel). R7 (enrichi, sans NIU) n'y figure pas. La requête du rattrapage
+  (`spark/commun/sources.py`, source `inscriptions`), lancée par `spark_reader`, ne rend que le RID de R4.
 - **Suivi d'un dossier** : 11 lignes dans `bi.suivi_dossier`, retrouvées par
   `hmac('<RID>', 'cle-du-banc', 'sha256')`, jamais avec une autre clé ; 6 avec un motif (29/10/2026 : rejetés
   REFUS_SUPERVISEUR et DOUBLON_ABIS, échoué IRIS_NON_CONCORDANT, en cours RECU_EN_ATTENTE et AUTRE, non classé AUTRE),

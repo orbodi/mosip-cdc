@@ -1,0 +1,14 @@
+{
+  "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
+  "tasks.max": "1",
+  "topics": "mosip.regprc.enrichissement",
+  "connection.url": "jdbc:postgresql://172.16.44.108:5432/mosip_bi",
+  "connection.username": "ods_writer",
+  "connection.password": "<mot de passe>",
+  "insert.mode": "upsert",
+  "primary.key.mode": "record_key",
+  "delete.enabled": "false",
+  "schema.evolution": "basic",
+  "collection.name.format": "regprc_enrichissement",
+  "use.time.zone": "UTC"
+}

@@ -6,6 +6,9 @@
 --  R5  reste échoué (mise à jour sans changement de devenir)
 --  R1  : entry_date du lien modifiée après coup (alerte du test assert_rid_uin_link_date_modifiee)
 --  L13 nouvelle synchronisation, pas encore reçue
+--  Enrichissement (lot 6) : R2 Homme, BENIN (absent de la liste : valeur gardée telle quelle), né en 2010 sans mois
+--  (16 ans au NIU : 15-18) ; R7 (sans NIU) genre « Inconnu » : alerte assert_enrolement_genres_inconnus, aucun effet
+--  sur les faits ; R1 répond à nouveau, à l'identique
 insert into ods.regprc_registration
  (id, reg_type, status_code, latest_trn_type_code, latest_trn_status_code, latest_trn_dtimes, reg_stage_name,
   cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset, status_comment) values
@@ -35,3 +38,17 @@ insert into lake.mosip_regprc_rid_uin_link
 insert into ods.regprc_registration_list
  (id, reg_id, reg_type, client_status_code, cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset) values
  ('S13','20001000020001320261024230000','NEW','APPROVED','2026-10-25 00:10','2026-10-25 00:10','false','c',1792890000000,11);
+
+insert into lake.mosip_regprc_enrichissement
+ (__connect_topic, __connect_partition, __connect_offset, rid, genre, nationalite, annee_naissance, mois_naissance,
+  api_statut, enrichi_le) values
+ ('mosip.regprc.enrichissement',0,1,'10001000010000220260704080000','Homme','BENIN',2010,null,200,now() - interval '1 hour'),
+ ('mosip.regprc.enrichissement',0,2,'20001000010000720261024070000','Inconnu','TOGO',1980,1,200,now() - interval '1 hour'),
+ ('mosip.regprc.enrichissement',0,3,'10001000010000120261001080000','Femme','TOGO',1990,5,200,now() - interval '1 hour');
+insert into ods.regprc_enrichissement values
+ ('10001000010000220260704080000','Homme','BENIN',2010,null,200,now() - interval '1 hour'),
+ ('20001000010000720261024070000','Inconnu','TOGO',1980,1,200,now() - interval '1 hour'),
+ ('10001000010000120261001080000','Femme','TOGO',1990,5,200,now() - interval '1 hour')
+on conflict (rid) do update set genre = excluded.genre, nationalite = excluded.nationalite,
+  annee_naissance = excluded.annee_naissance, mois_naissance = excluded.mois_naissance,
+  api_statut = excluded.api_statut, enrichi_le = excluded.enrichi_le;

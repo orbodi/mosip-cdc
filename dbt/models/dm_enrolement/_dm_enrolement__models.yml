@@ -27,6 +27,24 @@ models:
         data_tests:
           - not_null
 
+  - name: fait_niu_profil_jour
+    description: >
+      Profil des NIU (lot 6) : NIU par jour de génération, région du centre, sexe, tranche d'âge et nationalité.
+      Publié en bi.fait_niu_profil_jour et bi.fait_niu_nationalite_jour ; même total que fait_niu_jour, jour par jour
+      (test assert_enrolement_profil_niu_egal_niu).
+    columns:
+      - name: jour
+        data_tests:
+          - not_null
+      - name: sexe
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['F', 'H', 'I']
+      - name: nationalite
+        data_tests:
+          - not_null
+
   - name: fait_arret_etape_jour
     description: "Rejets et échecs par jour de réception, centre, type et étape (I5, I6)."
     columns:

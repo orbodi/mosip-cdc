@@ -127,6 +127,38 @@ services:
     networks:
       - mosip-cdc-net
 
+  # Enrichissement en continu des inscriptions qui ont un NIU (ID Repository, appelé par le RID ; lot 6)
+  spark-stream-inscriptions:
+    image: mosip-cdc-spark:4.0.2
+    container_name: mosip-cdc-spark-inscriptions
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: ["/opt/spark/bin/spark-submit", "--master", "local[2]", "--driver-memory", "1g",
+              "/app/jobs/enrichissement_flux.py", "--source", "inscriptions"]
+    environment:
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: "1"
+      API_URL: ${API_URL}
+      API_APP_ID: ${API_APP_ID}
+      API_CLIENT_ID: ${API_CLIENT_ID}
+      API_SECRET_KEY: ${API_SECRET_KEY}
+      API_TLS_VERIFY: ${API_TLS_VERIFY:-false}
+      IDREPO_URL: ${IDREPO_URL:-}
+      IDREPO_APP_ID: ${IDREPO_APP_ID:-}
+      IDREPO_CLIENT_ID: ${IDREPO_CLIENT_ID:-}
+      IDREPO_SECRET_KEY: ${IDREPO_SECRET_KEY:-}
+      FLUX_APPELS_SIMULTANES: ${FLUX_APPELS_SIMULTANES:-4}
+      FLUX_DEBIT_MAX: ${FLUX_DEBIT_MAX:-5}
+    volumes:
+      - ../spark:/app:ro
+      - ./certs:/certs:ro
+      - /data/mosip-cdc/spark/checkpoints:/checkpoints
+      - /data/mosip-cdc/spark/ivy:/opt/spark/ivy
+    networks:
+      - mosip-cdc-net
+
   spark-batch:
     image: mosip-cdc-spark:4.0.2
     profiles: ["tools"]
@@ -138,6 +170,10 @@ services:
       API_CLIENT_ID: ${API_CLIENT_ID}
       API_SECRET_KEY: ${API_SECRET_KEY}
       API_TLS_VERIFY: ${API_TLS_VERIFY:-false}
+      IDREPO_URL: ${IDREPO_URL:-}
+      IDREPO_APP_ID: ${IDREPO_APP_ID:-}
+      IDREPO_CLIENT_ID: ${IDREPO_CLIENT_ID:-}
+      IDREPO_SECRET_KEY: ${IDREPO_SECRET_KEY:-}
       TRAITEMENT_PG_HOST: ${TRAITEMENT_PG_HOST}
       SPARK_READER_PASSWORD: ${SPARK_READER_PASSWORD}
     volumes:

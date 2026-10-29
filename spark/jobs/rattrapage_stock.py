@@ -7,7 +7,11 @@ publié aussitôt : un arrêt ne fait perdre que le paquet en cours. Le lendemai
 naturellement là où il s'était arrêté, puisqu'il ne sélectionne que les dossiers encore sans réponse.
 
 Exemple :
-  spark-submit rattrapage_stock.py --debit 32 --simultanes 16 --fin 05:00 [--limite 200000]
+  spark-submit rattrapage_stock.py [--source prereg|inscriptions] --debit 32 --simultanes 16 --fin 05:00 \
+      [--limite 200000]
+
+Sources (commun/sources.py) : prereg (par défaut), pré-inscriptions sans réponse de l'API de pré-inscription ;
+inscriptions, NIU générés (ods.regprc_rid_uin_link) sans réponse de l'ID Repository.
 """
 import argparse
 import datetime as dt
@@ -17,20 +21,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from commun import config, publication
+from commun.sources import SOURCES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# Dossiers présents dans MOSIP et jamais enrichis. Les dossiers touchés dans la dernière heure
-# sont laissés au job en continu, pour ne pas appeler l'API deux fois pour le même dossier.
-REQUETE = """
-    SELECT p.prereg_id
-    FROM ods.applicant_demographic p
-    LEFT JOIN ods.enrichissement e ON e.prereg_id = p.prereg_id
-    WHERE e.prereg_id IS NULL
-      AND coalesce(p.upd_dtimes, p.cr_dtimes) < (now() AT TIME ZONE 'UTC') - interval '1 hour'
-    ORDER BY p.cr_dtimes DESC
-"""
 SEUIL_ERREURS = 0.10       # au-delà de 10 % d'échecs temporaires dans un paquet : pause
 PAUSE_S = 300              # pause de 5 minutes
 PAQUETS_MAUVAIS_MAX = 3    # 3 paquets mauvais d'affilée : arrêt
@@ -42,6 +37,7 @@ def journal(texte):
 
 def arguments(argv=None):
     p = argparse.ArgumentParser(description="Rattrapage de l'enrichissement des dossiers existants")
+    p.add_argument("--source", choices=sorted(SOURCES), default="prereg", help="source enrichie (prereg par défaut)")
     p.add_argument("--debit", type=float, required=True, help="appels par seconde au maximum")
     p.add_argument("--simultanes", type=int, required=True, help="appels simultanés")
     p.add_argument("--fin", required=True, help="heure d'arrêt, HH:MM (heure du conteneur, UTC)")
@@ -57,8 +53,8 @@ def heure_de_fin(hhmm, maintenant=None):
     return fin if fin > maintenant else fin + dt.timedelta(days=1)
 
 
-def charger_ids(spark, limite):
-    requete = REQUETE + (f" LIMIT {int(limite)}" if limite else "")
+def charger_ids(spark, requete, limite):
+    requete = requete + (f" LIMIT {int(limite)}" if limite else "")
     df = (spark.read.format("jdbc")
           .option("url", config.TRAITEMENT_JDBC)
           .option("user", "spark_reader")
@@ -67,11 +63,11 @@ def charger_ids(spark, limite):
           .option("query", requete)
           .option("fetchsize", 10000)
           .load())
-    return [r.prereg_id for r in df.collect()]
+    return [r.id for r in df.collect()]
 
 
 def rattraper(ids, enrichir, publier, simultanes, taille_paquet, fin,
-              maintenant=dt.datetime.now, dormir=time.sleep):
+              maintenant=dt.datetime.now, dormir=time.sleep, source=SOURCES["prereg"]):
     """Traite `ids` par paquets jusqu'à `fin`. Renvoie (traités, enrichis, échecs)."""
     traites = enrichis = echecs = 0
     mauvais_daffilee = 0
@@ -86,8 +82,8 @@ def rattraper(ids, enrichir, publier, simultanes, taille_paquet, fin,
             horodatage = int(time.time() * 1000)
             reussis = [r for r in resultats if r["ok"]]
             rates = [r for r in resultats if not r["ok"]]
-            publier(config.TOPIC_ENRICHI, publication.messages_enrichis(reussis, horodatage))
-            publier(config.TOPIC_ERREURS, publication.messages_erreurs(rates, horodatage))
+            publier(source.topic_enrichi, source.format.enrichis(reussis, horodatage))
+            publier(source.topic_erreurs, source.format.erreurs(rates, horodatage))
             traites += len(paquet)
             enrichis += len(reussis)
             echecs += len(rates)
@@ -111,20 +107,21 @@ def rattraper(ids, enrichir, publier, simultanes, taille_paquet, fin,
 
 def main():
     from pyspark.sql import SparkSession
-    from commun.api_client import ClientApi
 
     a = arguments()
+    source = SOURCES[a.source]
     fin = heure_de_fin(a.fin)
-    spark = SparkSession.builder.appName("rattrapage-stock").getOrCreate()
+    nom_appli = "rattrapage-stock" if source.nom == "prereg" else f"rattrapage-{source.nom}"
+    spark = SparkSession.builder.appName(nom_appli).getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
-    ids = charger_ids(spark, a.limite)
-    journal(f"début : {len(ids)} dossiers à enrichir, {a.debit:g} appels/s au maximum, "
+    ids = charger_ids(spark, source.requete_rattrapage, a.limite)
+    journal(f"début ({source.nom}) : {len(ids)} dossiers à enrichir, {a.debit:g} appels/s au maximum, "
             f"{a.simultanes} simultanés, arrêt à {fin:%F %H:%M}")
     if ids:
-        client = ClientApi(debit_max=a.debit)
+        client = source.client(debit_max=a.debit)
         traites, enrichis, echecs = rattraper(
             ids, client.enrichir, lambda topic, messages: publication.publier(spark, topic, messages),
-            a.simultanes, a.paquet, fin)
+            a.simultanes, a.paquet, fin, source=source)
         journal(f"fin : {traites} traités, {enrichis} enrichis, {echecs} échecs, "
                 f"{len(ids) - traites} restants pour le prochain lancement")
     spark.stop()

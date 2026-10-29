@@ -14,6 +14,10 @@
 --  R8  20001  rejeté à DEMOGRAPHIC_VERIFICATION
 --  L10 10001  synchronisé le 23/10, pas encore reçu (en transit)
 --  L11 10002  synchronisé le 01/09, jamais reçu (perdu)
+--
+-- Enrichissement (ID Repository, lot 6), tel que l'écrivent lake-regprc-enrichissement et ods-regprc-enrichissement :
+--  R1  Femme, TOGO (code de la liste « nationality », libellé « Togo »), née en mai 1990 : 36 ans au NIU (36-45)
+--  R4  pas encore enrichi : sexe I, âge inconnu, « Non renseignée »
 insert into ods.regprc_registration
  (id, reg_type, status_code, latest_trn_type_code, latest_trn_status_code, latest_trn_dtimes, reg_stage_name,
   cr_dtimes, upd_dtimes, __deleted, __op, __source_ts_ms, __kafka_offset, status_comment) values
@@ -50,3 +54,17 @@ insert into lake.mosip_regprc_rid_uin_link
   __source_ts_ms) values
  ('mosip.regprc.rid_uin_link',0,0,1001,'10001000010000120261001080000','NEW','2026-10-01 18:24','false','r',100,1792900000000),
  ('mosip.regprc.rid_uin_link',0,1,1004,'99999000010000420261005080000','NEW','2026-10-06 11:05','false','r',100,1792900000000);
+
+insert into lake.mosip_regprc_enrichissement
+ (__connect_topic, __connect_partition, __connect_offset, rid, genre, nationalite, annee_naissance, mois_naissance,
+  api_statut, enrichi_le) values
+ ('mosip.regprc.enrichissement',0,0,'10001000010000120261001080000','Femme','TOGO',1990,5,200,'2026-10-01 19:00');
+insert into ods.regprc_enrichissement values
+ ('10001000010000120261001080000','Femme','TOGO',1990,5,200,'2026-10-01 19:00');
+
+-- Liste MOSIP « nationality » (master.dynamic_field) : seul TOGO y figure
+insert into lake.mosip_master_dynamic_field
+ (__connect_topic, __connect_partition, __connect_offset, id, name, description, data_type, value_json, lang_code,
+  is_active, is_deleted, cr_dtimes, upd_dtimes, __deleted, __op, __lsn, __source_ts_ms) values
+ ('mosip.master.dynamic_field',0,0,'DF1','nationality','Nationalité','string',
+  '[{"code":"TOGO","value":"Togo","langCode":"fra","active":true}]','fra',true,false,now(),null,'false','r',1,0);

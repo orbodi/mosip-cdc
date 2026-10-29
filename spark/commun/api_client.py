@@ -1,8 +1,12 @@
-"""Client de l'API de pré-inscription MOSIP.
+"""Clients des API MOSIP d'enrichissement.
 
-Seuls les champs utiles au BI sont extraits : genre, nationalité, année et mois de naissance,
-codes de résidence. Le reste de la réponse (noms, noms des parents, téléphone, date de naissance
-complète, lieu de naissance...) n'est jamais conservé, renvoyé ni journalisé.
+- ClientApi : API de pré-inscription, un dossier par prereg_id. Champs extraits : genre, nationalité, année et mois de
+  naissance, codes de résidence.
+- ClientIdrepo : ID Repository (/idrepository/v1/identity/idvid/{RID}), une identité par RID d'une inscription qui a
+  un NIU. Champs extraits : genre, nationalité, année et mois de naissance. Appelé avec le RID, jamais avec le NIU.
+
+Le reste de la réponse (noms, noms des parents, téléphone, NIU, numéro de pièce, date de naissance complète, lieu de
+naissance, profession...) n'est jamais conservé, renvoyé ni journalisé. L'identifiant appelé n'est jamais journalisé.
 """
 import datetime as dt
 import logging
@@ -20,6 +24,7 @@ log = logging.getLogger("api_client")
 
 URL_AUTH = "/v1/authmanager/authenticate/clientidsecretkey"
 URL_DOSSIER = "/preregistration/v1/applications/{}"
+URL_IDENTITE = "/idrepository/v1/identity/idvid/{}"
 
 # Colonne du BI -> champ de résidence de l'API
 CHAMPS_RESIDENCE = {
@@ -30,6 +35,7 @@ CHAMPS_RESIDENCE = {
     "localite_code": "locality",
 }
 COLONNES = ["genre", "nationalite", "annee_naissance", "mois_naissance", *CHAMPS_RESIDENCE]
+COLONNES_INSCRIPTION = ["genre", "nationalite", "annee_naissance", "mois_naissance"]
 
 
 class Limiteur:
@@ -75,6 +81,12 @@ def extraire(identite):
     return resultat
 
 
+def extraire_inscription(identite):
+    """Champs utiles d'une identité de l'ID Repository : genre, nationalité, année et mois de naissance."""
+    tout = extraire(identite)
+    return {colonne: tout[colonne] for colonne in COLONNES_INSCRIPTION}
+
+
 def annee_mois(texte, mois_inconnu=False):
     """Année et mois d'une date de naissance, quel que soit son format :
     AAAA/MM/JJ, AAAA-MM-JJ, JJ/MM/AAAA, AAAA-MM, AAAA seule, avec ou sans heure. Le jour est ignoré."""
@@ -93,15 +105,22 @@ def annee_mois(texte, mois_inconnu=False):
     return annee, mois
 
 
-def _echec(prereg_id, api_statut, code, message="", definitif=False):
-    return {"ok": False, "prereg_id": prereg_id, "api_statut": api_statut,
+def _echec(cle, identifiant, api_statut, code, message="", definitif=False):
+    return {"ok": False, cle: identifiant, "api_statut": api_statut,
             "code_erreur": code, "message": (message or "")[:200], "definitif": definitif}
 
 
 class ClientApi:
-    """Appels à l'API, partagés entre threads : authentification, plafond de débit, nouvelles tentatives."""
+    """Appels à l'API de pré-inscription, partagés entre threads : authentification, plafond de débit, nouvelles
+    tentatives. Les sous-classes changent l'adresse, les identifiants, la clé et l'extraction."""
 
-    def __init__(self, debit_max):
+    CLE = "prereg_id"
+    URL = URL_DOSSIER
+
+    def __init__(self, debit_max, url=None, app_id=None, client_id=None, secret_key=None):
+        self._app_id = app_id or config.API_APP_ID
+        self._client_id = client_id or config.API_CLIENT_ID
+        self._secret_key = secret_key or config.API_SECRET_KEY
         if config.API_TLS_VERIFY:
             if not os.path.isfile(config.API_CA_FILE):
                 raise SystemExit(
@@ -112,7 +131,7 @@ class ClientApi:
             log.warning("vérification du certificat de l'API désactivée (API_TLS_VERIFY=false)")
             verification = False
         self._http = httpx.Client(
-            base_url=config.API_URL, timeout=config.API_DELAI_S, verify=verification,
+            base_url=url or config.API_URL, timeout=config.API_DELAI_S, verify=verification,
             limits=httpx.Limits(max_connections=64, max_keepalive_connections=64))
         self._limiteur = Limiteur(debit_max)
         self._verrou_auth = threading.Lock()
@@ -128,8 +147,7 @@ class ClientApi:
         corps = {
             "id": "string", "version": "1.0", "metadata": {},
             "requesttime": maintenant.strftime("%Y-%m-%dT%H:%M:%S.") + f"{maintenant.microsecond // 1000:03d}Z",
-            "request": {"appId": config.API_APP_ID, "clientId": config.API_CLIENT_ID,
-                        "secretKey": config.API_SECRET_KEY},
+            "request": {"appId": self._app_id, "clientId": self._client_id, "secretKey": self._secret_key},
         }
         r = self._http.post(URL_AUTH, json=corps)
         jeton = r.cookies.get("Authorization")
@@ -156,35 +174,43 @@ class ClientApi:
 
     # ---------- Appel d'un dossier ----------
 
-    def enrichir(self, prereg_id):
-        """Renvoie {"ok": True, prereg_id, api_statut, champs utiles} ou un échec décrit sans donnée personnelle."""
-        resultat = _echec(prereg_id, None, "NON_TENTE")
+    def _identite(self, donnees):
+        """Identité contenue dans la réponse (dictionnaire), ou None."""
+        return ((donnees.get("response") or {}).get("demographicDetails") or {}).get("identity")
+
+    def _extraire(self, identite):
+        return extraire(identite)
+
+    def enrichir(self, identifiant):
+        """Renvoie {"ok": True, <clé>, api_statut, champs utiles} ou un échec décrit sans donnée personnelle."""
+        cle = self.CLE
+        resultat = _echec(cle, identifiant, None, "NON_TENTE")
         for essai in range(config.API_ESSAIS):
             if essai:
                 time.sleep(2 ** (essai - 1))                     # 1 s, 2 s...
             self._limiteur.attendre()
             jeton, generation = self._jeton_courant()
             try:
-                r = self._http.get(URL_DOSSIER.format(prereg_id),
+                r = self._http.get(self.URL.format(identifiant),
                                    headers={"Cookie": f"Authorization={jeton}"})
             except httpx.HTTPError as e:                          # délai dépassé, connexion refusée...
-                resultat = _echec(prereg_id, None, type(e).__name__)
+                resultat = _echec(cle, identifiant, None, type(e).__name__)
                 continue
             self._http.cookies.clear()
 
             if r.status_code in (401, 403):
                 self._renouveler(generation)
-                resultat = _echec(prereg_id, r.status_code, f"HTTP {r.status_code}")
+                resultat = _echec(cle, identifiant, r.status_code, f"HTTP {r.status_code}")
                 continue
             if r.status_code == 429 or r.status_code >= 500:
-                resultat = _echec(prereg_id, r.status_code, f"HTTP {r.status_code}")
+                resultat = _echec(cle, identifiant, r.status_code, f"HTTP {r.status_code}")
                 continue
             if r.status_code != 200:
-                return _echec(prereg_id, r.status_code, f"HTTP {r.status_code}", definitif=True)
+                return _echec(cle, identifiant, r.status_code, f"HTTP {r.status_code}", definitif=True)
             try:
                 donnees = r.json()
             except ValueError:
-                resultat = _echec(prereg_id, 200, "REPONSE_ILLISIBLE")
+                resultat = _echec(cle, identifiant, 200, "REPONSE_ILLISIBLE")
                 continue
 
             erreurs = donnees.get("errors") or []
@@ -192,12 +218,37 @@ class ClientApi:
                 code = str(erreurs[0].get("errorCode") or "ERREUR_API")
                 if code.startswith("KER-ATH"):                    # jeton refusé ou expiré
                     self._renouveler(generation)
-                    resultat = _echec(prereg_id, 200, code)
+                    resultat = _echec(cle, identifiant, 200, code)
                     continue
-                return _echec(prereg_id, 200, code, str(erreurs[0].get("message") or ""), definitif=True)
+                return _echec(cle, identifiant, 200, code, str(erreurs[0].get("message") or ""), definitif=True)
 
-            identite = ((donnees.get("response") or {}).get("demographicDetails") or {}).get("identity")
+            identite = self._identite(donnees)
             if not isinstance(identite, dict):
-                return _echec(prereg_id, 200, "SANS_IDENTITE", definitif=True)
-            return {"ok": True, "prereg_id": prereg_id, "api_statut": 200, **extraire(identite)}
+                return _echec(cle, identifiant, 200, "SANS_IDENTITE", definitif=True)
+            return {"ok": True, cle: identifiant, "api_statut": 200, **self._extraire(identite)}
+        return resultat
+
+
+class ClientIdrepo(ClientApi):
+    """ID Repository de MOSIP : identité d'une inscription qui a un NIU, appelée par son RID. Mêmes passerelle et
+    authentification que la pré-inscription, avec les identifiants IDREPO_* de compose/.env (à défaut, ceux de API_*).
+    Le message d'erreur de MOSIP n'est pas gardé : il peut reprendre l'identifiant appelé."""
+
+    CLE = "rid"
+    URL = URL_IDENTITE
+
+    def __init__(self, debit_max):
+        super().__init__(debit_max, url=config.IDREPO_URL, app_id=config.IDREPO_APP_ID,
+                         client_id=config.IDREPO_CLIENT_ID, secret_key=config.IDREPO_SECRET_KEY)
+
+    def _identite(self, donnees):
+        return (donnees.get("response") or {}).get("identity")
+
+    def _extraire(self, identite):
+        return extraire_inscription(identite)
+
+    def enrichir(self, identifiant):
+        resultat = super().enrichir(identifiant)
+        if not resultat["ok"]:
+            resultat["message"] = ""
         return resultat

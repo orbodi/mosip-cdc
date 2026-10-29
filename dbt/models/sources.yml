@@ -17,6 +17,10 @@ sources:
           jamais modifiés : id, reg_id (RID), reg_type, entry_date. Jamais uin ni civil_registry_number.
       - name: mosip_prereg_enrichissement
         description: "Réponses de l'API de pré-inscription (connecteur lake-enrichissement) : champs extraits seulement."
+      - name: mosip_regprc_enrichissement
+        description: >
+          Réponses de l'ID Repository pour les inscriptions qui ont un NIU (connecteur lake-regprc-enrichissement,
+          lot 6), appelé par le RID : genre, nationalité, année et mois de naissance seulement. Jamais le NIU.
       - name: mosip_master_location
         description: "Tous les changements de master.location (connecteurs mosip-master-cdc et lake-master)."
       - name: mosip_master_registration_center

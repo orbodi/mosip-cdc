@@ -24,7 +24,12 @@ select cast(date_trunc('week', cast(f.jour as timestamp)) as date), 'niu', sum(f
 \echo === Top des centres (inscriptions)
 select z.code, z.nom, sum(f.inscriptions) inscriptions from bi.fait_enrolement_jour f join bi.zone z on z.id = f.centre_id
 group by 1, 2 order by 3 desc, 2 limit 5;
+\echo === NIU par âge, sexe et nationalité (lot 6, requêtes niuParSexeEtAge et niuParNationalite), national
+select f.sexe, f.tranche_age, sum(f.niu_generes) niu_generes from bi.fait_niu_profil_jour f group by 1, 2 order by 1, 2;
+select f.nationalite, sum(f.niu_generes) niu_generes from bi.fait_niu_nationalite_jour f group by 1 order by 2 desc, 1;
 \echo === Droits : publisher peut écrire les faits, api_reader seulement lire
 select has_table_privilege('publisher','bi.fait_enrolement_jour','INSERT') pub_ins, has_table_privilege('publisher','bi.fait_niu_jour','DELETE') pub_del,
        has_table_privilege('api_reader','bi.fait_enrolement_jour','SELECT') api_sel, has_table_privilege('api_reader','bi.fait_enrolement_jour','INSERT') api_ins,
-       has_schema_privilege('api_reader','dwh','USAGE') api_dwh;
+       has_schema_privilege('api_reader','dwh','USAGE') api_dwh,
+       has_table_privilege('api_reader','bi.fait_niu_nationalite_jour','SELECT') api_nat,
+       has_table_privilege('publisher','bi.fait_niu_profil_jour','INSERT') pub_profil;

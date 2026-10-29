@@ -19,6 +19,16 @@ API_DELAI_S = float(os.environ.get("API_DELAI_S", "10"))          # délai maxim
 API_ESSAIS = int(os.environ.get("API_ESSAIS", "3"))                # tentatives avant de déclarer un échec
 JETON_RENOUVELLEMENT_S = int(os.environ.get("API_JETON_RENOUVELLEMENT_S", "32400"))  # 9 h (jeton valable 10 h)
 
+# ID Repository de MOSIP (inscriptions qui ont un NIU, appelées par leur RID) : même passerelle et mêmes identifiants
+# que la pré-inscription tant que les variables IDREPO_* ne sont pas renseignées
+TOPIC_LIENS_NIU = "mosip.regprc.rid_uin_link"
+TOPIC_INSCRIPTIONS_ENRICHI = "mosip.regprc.enrichissement"
+TOPIC_INSCRIPTIONS_ERREURS = "mosip.regprc.enrichissement.erreurs"
+IDREPO_URL = (os.environ.get("IDREPO_URL") or API_URL).rstrip("/")
+IDREPO_APP_ID = os.environ.get("IDREPO_APP_ID") or API_APP_ID
+IDREPO_CLIENT_ID = os.environ.get("IDREPO_CLIENT_ID") or API_CLIENT_ID
+IDREPO_SECRET_KEY = os.environ.get("IDREPO_SECRET_KEY") or API_SECRET_KEY
+
 # BD traitement : le rattrapage y lit l'ODS (rôle spark_reader)
 TRAITEMENT_JDBC = f"jdbc:postgresql://{os.environ.get('TRAITEMENT_PG_HOST', 'localhost')}:5432/mosip_bi"
 

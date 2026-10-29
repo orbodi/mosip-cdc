@@ -42,3 +42,10 @@ models:
                 field: code
               config:
                 where: "parent_code <> 'HORS_REFERENTIEL'"
+
+  - name: dim_centre_region
+    description: "Région de chaque centre d'enrôlement (remontée de dim_zone) ; code_centre unique par index."
+    columns:
+      - name: code_region
+        data_tests:
+          - not_null

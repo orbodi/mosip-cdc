@@ -67,6 +67,22 @@ FROM dm_enrolement.fait_niu_jour f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3;
+-- Profil des NIU (lot 6, ID Repository) : région du centre résolue en bi.zone (« Hors référentiel » sinon), puis
+-- regroupé par sexe et âge d'une part, par nationalité d'autre part. Même total que bi.fait_niu_jour.
+DELETE FROM bi.fait_niu_profil_jour;
+INSERT INTO bi.fait_niu_profil_jour (jour, zone_id, sexe, tranche_age, niu_generes)
+SELECT f.jour, coalesce(z.id, h.id), f.sexe, f.tranche_age, sum(f.niu_generes)
+FROM dm_enrolement.fait_niu_profil_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'HORS_REFERENTIEL') h
+LEFT JOIN bi.zone z ON z.code = f.code_region AND z.niveau = 'region'
+GROUP BY 1, 2, 3, 4;
+DELETE FROM bi.fait_niu_nationalite_jour;
+INSERT INTO bi.fait_niu_nationalite_jour (jour, zone_id, nationalite, niu_generes)
+SELECT f.jour, coalesce(z.id, h.id), f.nationalite, sum(f.niu_generes)
+FROM dm_enrolement.fait_niu_profil_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'HORS_REFERENTIEL') h
+LEFT JOIN bi.zone z ON z.code = f.code_region AND z.niveau = 'region'
+GROUP BY 1, 2, 3;
 INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
 SELECT 'enrolement', 'Enrôlement', 1, premiere_donnee, derniere_donnee, now()
 FROM dm_enrolement.fraicheur_enrolement

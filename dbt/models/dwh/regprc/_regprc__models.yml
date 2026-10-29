@@ -26,6 +26,12 @@ models:
   - name: stg_regprc__registration_list
     description: "Synchronisations des paquets (ODS) : une ligne par synchronisation (clé primaire : synchronisation_id)."
 
+  - name: stg_regprc__enrichissement
+    description: >
+      Dernière réponse de l'ID Repository par inscription qui a un NIU (lake, lot 6) : genre, sexe (F, H, I),
+      nationalité, année et mois de naissance ; rid unique par index. Pas de test sur ses 6 M de lignes : sexe vaut
+      F, H ou I par construction ; les genres inconnus sont signalés par assert_enrolement_genres_inconnus.
+
   - name: suivi_inscription
     description: "Table pivot : une ligne par RID reçu ou synchronisé, jalons, étape et devenir (règle I4) ; rid unique par index."
     columns:

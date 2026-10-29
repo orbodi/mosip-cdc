@@ -18,7 +18,7 @@ P="psql -U $SU -v ON_ERROR_STOP=1 -q"
 en() { local r=$1; shift; psql -U "$r" -d mosip_bi -v ON_ERROR_STOP=1 -q "$@"; }
 
 $P -d postgres -c "drop database if exists mosip_bi" -c "create database mosip_bi"
-for r in dbt_runner publisher publisher_ro ingest_writer ods_writer api_reader bi_owner; do
+for r in dbt_runner publisher publisher_ro ingest_writer ods_writer api_reader bi_owner spark_reader; do
   $P -d postgres -c "do \$\$ begin if not exists (select 1 from pg_roles where rolname = '$r') then
                        create role $r login; end if; end \$\$"
 done
@@ -29,7 +29,7 @@ $P -d mosip_bi -c "create schema lake authorization ingest_writer; create schema
                    create schema ref authorization publisher; create schema ind authorization publisher;
                    create schema bi authorization bi_owner;
                    grant create on database mosip_bi to dbt_runner, bi_owner;
-                   grant usage on schema lake to dbt_runner; grant usage on schema ods to publisher"
+                   grant usage on schema lake to dbt_runner; grant usage on schema ods to publisher, spark_reader"
 
 # Prérequis du propriétaire (pgcrypto, usage du schéma ods), comme sur le serveur
 $P -d mosip_bi -f "$CDC/sql/traitement/17_prerequis_proprietaire.sql" >/dev/null
@@ -72,15 +72,17 @@ insert into lake.mosip_master_registration_center values
 insert into lake.mosip_prereg_applicant_demographic values ('mosip.prereg.applicant_demographic',0,0,'P0001',
   'Booked','fra','2026-10-01 10:00','2026-10-02 10:00','false','r',1,1792900000000);
 SQL
-en ingest_writer -f "$CDC/sql/traitement/04_enrichissement.sql" -f "$CDC/sql/traitement/15_lake_regprc.sql"
+en ingest_writer -f "$CDC/sql/traitement/04_enrichissement.sql" -f "$CDC/sql/traitement/15_lake_regprc.sql" \
+  -f "$CDC/sql/traitement/19_lake_regprc_enrichissement.sql"
 # Les fichiers de données du banc (01_snapshot.sql, 02_flux.sql) jouent les connecteurs : ods_writer écrit aussi le
 # journal du lake, ce que fait ingest_writer sur le serveur.
-en ingest_writer -c "grant usage on schema lake to ods_writer; grant insert on lake.mosip_regprc_rid_uin_link to ods_writer"
+en ingest_writer -c "grant usage on schema lake to ods_writer; grant insert on lake.mosip_regprc_rid_uin_link,
+                     lake.mosip_regprc_enrichissement, lake.mosip_master_dynamic_field to ods_writer"
 en ingest_writer -c "grant select on lake.mosip_prereg_enrichissement to dbt_runner"
 en ods_writer -c "create table ods.applicant_demographic (prereg_id text primary key, status_code text,
                   cr_dtimes timestamp, upd_dtimes timestamp);
                   grant select on ods.applicant_demographic to publisher"
-en ods_writer -f "$CDC/sql/traitement/14_ods_regprc.sql"
+en ods_writer -f "$CDC/sql/traitement/14_ods_regprc.sql" -f "$CDC/sql/traitement/20_ods_regprc_enrichissement.sql"
 
 # Premier passage dbt (crée dwh et dm_*), droits supposés existants sur dwh et dm_preinscription, tables ref / ind
 "$(dirname "$0")/passage.sh" --sans-publication || true

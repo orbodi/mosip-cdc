@@ -13,6 +13,13 @@ $K --create --if-not-exists --topic mosip.prereg.enrichissement \
 $K --create --if-not-exists --topic mosip.prereg.enrichissement.erreurs \
    --partitions 1 --replication-factor 1 --config retention.ms=2419200000
 
+# Enrichissement des inscriptions qui ont un NIU (ID Repository, lot 6) : comme celui des pré-inscriptions, dernière
+# réponse de chaque RID dans un topic compacté, échecs gardés 28 jours
+$K --create --if-not-exists --topic mosip.regprc.enrichissement \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact
+$K --create --if-not-exists --topic mosip.regprc.enrichissement.erreurs \
+   --partitions 1 --replication-factor 1 --config retention.ms=2419200000
+
 # Référentiel MOSIP (connecteur mosip-master-cdc) : compactés, le topic garde toujours l'état complet par clé
 $K --create --if-not-exists --topic mosip.master.location \
    --partitions 1 --replication-factor 1 --config cleanup.policy=compact
@@ -44,5 +51,7 @@ $K --describe --topic mosip.prereg.enrichissement.erreurs
 $K --describe --topic mosip.regprc.registration
 $K --describe --topic mosip.regprc.registration_list
 $K --describe --topic mosip.regprc.rid_uin_link
+$K --describe --topic mosip.regprc.enrichissement
+$K --describe --topic mosip.regprc.enrichissement.erreurs
 $K --describe --topic mosip.master.location
 $K --describe --topic mosip.master.registration_center

@@ -11,6 +11,11 @@ registration_list ─┘  mosip-      │                                     �
                       regprc-cdc  mosip.regprc.registration_list (cpt.) → ods.regprc_registration_list (upsert)
                                                                               │ dbt toutes les 5 min
                                        dwh.suivi_inscription (une ligne par RID) → dm_enrolement.* → publication → bi.*
+
+Profil des NIU (lot 6) : rid_uin_link (lien créé) ─→ Spark ─→ ID Repository, appelé avec le RID
+   ─→ mosip.regprc.enrichissement (compacté) → lake.mosip_regprc_enrichissement (journal) + ods.regprc_enrichissement
+   ─→ dbt : stg_regprc__enrichissement → dm_enrolement.fait_niu_profil_jour → bi.fait_niu_profil_jour,
+            bi.fait_niu_nationalite_jour
 ```
 
 ## Ce qui est capté
@@ -31,6 +36,12 @@ registration_list ─┘  mosip-      │                                     �
   Les inscriptions captées avant le 27/10/2026 ont été complétées une fois par `scripts/rattraper-status-comment.sh`
   (lignes vides seulement, relançable).
 - **Journal** (lake) pour `rid_uin_link` seulement : il sert à repérer un `entry_date` modifié après coup (alerte).
+- **Profil des NIU** (lot 6, 29/10/2026) : pour chaque inscription qui a un NIU, l'ID Repository de MOSIP
+  (`/idrepository/v1/identity/idvid/{RID}`) est appelé **avec le RID, jamais avec le NIU** (le NIU n'est capté nulle
+  part). De la réponse, le job ne garde que le genre, la nationalité, l'année et le mois de naissance ; le NIU, les
+  noms, le téléphone, la pièce d'identité, la date complète, les lieux, la profession ne sont ni gardés ni journalisés,
+  et le message d'erreur de MOSIP non plus (il peut reprendre l'identifiant). Le RID figure dans l'adresse de l'appel :
+  les journaux de la passerelle MOSIP le voient, comme le `prereg_id` des pré-inscriptions.
 - Le RID est en clair dans l'ODS, le lake et le `dwh`, comme le `prereg_id`. Vers `bi`, seule son **empreinte HMAC**
   est publiée (suivi d'un dossier), avec la clé `SUIVI_HMAC_CLE` de `compose/.env`.
 
@@ -69,14 +80,23 @@ registration_list ─┘  mosip-      │                                     �
 | `fait_delai_jour` | `bi.fait_delai_jour` (V7) | I8, I9 |
 | `stock_synchro_non_recue` | `bi.stock_synchro_non_recue` (V7) | I10 |
 | `suivi_dossier` (vue) | `bi.suivi_dossier` (V7), par empreinte, lignes changées seulement | I11 |
+| `fait_niu_profil_jour` (lot 6) | `bi.fait_niu_profil_jour` (V4) et `bi.fait_niu_nationalite_jour` (V7), regroupés à la publication | profil des NIU : sexe, tranche d'âge, nationalité |
 | `fraicheur_enrolement` | `bi.source_fraicheur('enrolement')` | pastille de mise à jour |
 
+**Profil des NIU** (`fait_niu_profil_jour`, lot 6) : les NIU de `fait_niu_jour`, au même jour de génération, par
+région du **centre** (`dim_centre_region`, « Hors référentiel » si le centre n'est rattaché à aucune région), sexe
+(« Femme » → F, « Homme » → H, aussi FLE et MLE ; toute autre valeur → I, alerte `assert_enrolement_genres_inconnus`),
+tranche d'âge (années révolues au jour du NIU, d'après l'année et le mois de naissance ; tranches des pré-inscriptions)
+et nationalité (libellé de la liste MOSIP « nationality » si la valeur y est un code, sinon la valeur telle quelle).
+Un NIU pas encore enrichi compte en I, âge inconnu, « Non renseignée » : le total égale toujours les NIU générés.
+
 **Contrôles bloquants** (rien n'est publié en cas d'échec, pré-inscriptions comprises) : somme des devenirs =
-inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; étapes = Devenir ; motifs = Devenir ; histogrammes
+inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; profil des NIU = NIU générés, jour par jour ; étapes = Devenir ; motifs = Devenir ; histogrammes
 complets ; codes uniques dans les seeds. L'unicité du RID n'est pas un test : clés primaires de l'ODS et index unique de
 `dwh.suivi_inscription` (un doublon fait échouer ce modèle ; allègement du 25/10/2026, un passage dbt de 88 s).
 **Alertes** : centre non référencé, statut ou étape inconnus, horodatage du RID illisible, `entry_date` modifiée,
-commentaire de MOSIP non répertorié, étape `reg_stage_name` absente de `ref_regprc_stages.csv`.
+commentaire de MOSIP non répertorié, étape `reg_stage_name` absente de `ref_regprc_stages.csv`, genre de l'ID Repository
+non reconnu.
 
 ## Mise en service
 
@@ -158,6 +178,57 @@ que le code (colonne `motif`) ; libellé et message type sont dans `bi.ref_motif
    `scripts/rattraper-motif-suivi.sh` (≈ 350 000 dossiers, empreinte calculée pour ceux qui ont un motif ; relançable,
    ne réécrit que les motifs qui changent).
 
+### Profil des NIU par l'ID Repository (lot 6, 29/10/2026)
+
+Rien ne change pour les pré-inscriptions : leurs jobs gardent leurs messages, leurs topics et leur point de reprise
+(option `--source`, `prereg` par défaut). L'ordre compte : sans les tables et les droits, la publication échoue.
+
+**Avant tout** : `compose/.env` du serveur. Si l'ID Repository demande d'autres identifiants que la pré-inscription,
+ajouter `IDREPO_APP_ID`, `IDREPO_CLIENT_ID` et `IDREPO_SECRET_KEY` (et `IDREPO_URL` si la passerelle diffère) ;
+laissées vides ou absentes, ce sont celles de `API_*` qui servent. Ne jamais les écrire ailleurs.
+
+**BD traitement**
+1. `ingest_writer` : `sql/traitement/19_lake_regprc_enrichissement.sql`.
+2. `ods_writer` : `sql/traitement/20_ods_regprc_enrichissement.sql` (table et droits de `spark_reader`).
+
+**API (mosip-bi-reporting, branche `dashboard`)**
+3. Déployer l'API : `/age-sexe` renvoie aussi les nationalités (aucune migration ; tables V4 et V7 déjà en place).
+4. `bi_owner` : `sql/traitement/16_droits_bi_enrolement.sql` (droits de `publisher` sur `bi.fait_niu_profil_jour`),
+   **avant** l'étape 5 : sans eux, la publication échouerait (transaction annulée, chiffres précédents gardés).
+
+**Serveur pipeline**
+5. `git pull` de `mosip-cdc`. Au passage suivant, dbt crée `stg_regprc__enrichissement` (vide), `dim_centre_region` et
+   `fait_niu_profil_jour`, et publie le profil : tous les NIU en « Non renseignée », pyramide vide, jusqu'aux premières
+   réponses.
+6. Topics, dans l'interface Kafka ou par `kafka/topics.sh` : `mosip.regprc.enrichissement` (compacté) et
+   `mosip.regprc.enrichissement.erreurs` (28 jours), une partition chacun.
+7. Connecteurs, dans l'interface Kafka : `lake-regprc-enrichissement` et `ods-regprc-enrichissement` (fichiers de
+   `kafka/connecteurs/`, mot de passe reporté). Les comparer d'abord à `lake-enrichissement` et `ods-enrichissement`
+   des pré-inscriptions, qui lisent des messages de même forme : reprendre tout réglage qui y figure en plus
+   (convertisseurs par exemple).
+8. Essai limité, sous le verrou du rattrapage (dans `compose/`), à une heure de fin proche :
+   `flock /tmp/mosip-rattrapage.lock docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[2]
+   /app/jobs/rattrapage_stock.py --source inscriptions --debit 4 --simultanes 2 --limite 200 --fin <HH:MM>`.
+   Attendu : « 200 traités, 200 enrichis » ou presque ; puis, une minute plus tard,
+   `select count(*), count(*) filter (where genre is null) from ods.regprc_enrichissement;` et
+   `select genre, count(*) from lake.mosip_regprc_enrichissement group by 1;` (Femme, Homme). Un échec
+   `KER-ATH-…` ou HTTP 401/403 : identifiants refusés pour l'ID Repository (étape « Avant tout »).
+9. Job en continu des NIU : `docker compose up -d spark-stream-inscriptions` ; puis
+   `docker compose restart spark-stream` pour que le job des pré-inscriptions charge le code commun mis à jour (même
+   point de reprise : il repart où il s'était arrêté). Journal : `docker logs -f mosip-cdc-spark-inscriptions`
+   (une ligne par lot : dossiers, enrichis, échecs).
+10. Cron : copier `ops/cron/mosip-bi` dans `/etc/cron.d/mosip-bi`. Le rattrapage des NIU passe après celui des
+    pré-inscriptions, dans les mêmes créneaux et sous le même verrou (environ 6 M de NIU : 4 à 5 jours aux débits de
+    32 et 8 appels/s).
+11. Vérifier : `bi.fait_niu_profil_jour` et `bi.fait_niu_nationalite_jour` totalisent les NIU de `bi.fait_niu_jour`
+    (le test dbt l'impose) ; la part « Non renseignée » baisse à chaque créneau ; les valeurs de nationalité
+    (`select nationalite, sum(niu_generes) from bi.fait_niu_nationalite_jour group by 1 order by 2 desc;`) sont des
+    libellés de la liste MOSIP, sinon signaler les valeurs brutes.
+
+Retour arrière : `docker compose stop spark-stream-inscriptions`, retirer ses lignes du cron, supprimer les deux
+connecteurs. Le profil reste publié avec les réponses déjà reçues ; revenir au commit précédent de `mosip-cdc` vide
+`bi.fait_niu_profil_jour` au passage suivant (la pyramide repasse à 0).
+
 ## Exploitation et reprise
 
 | Situation | Action |
@@ -173,6 +244,9 @@ que le code (colonne `motif`) ; libellé et message type sont dans `bi.ref_motif
 | Topic recréé ou ODS rechargé (offsets repartis de 0) | `dbt build --full-refresh --select suivi_inscription+`, puis `scripts/charger-suivi.sh` |
 | Slot perdu | nouveau slot, nouveau snapshot (l'ODS est réécrit sur place), puis la ligne précédente |
 | Connecteur source arrêté plus d'un jour | MOSIP en PostgreSQL 12 ne plafonne pas les journaux retenus : supprimer le slot (DBA), puis nouveau snapshot |
+| Alerte « genre de l'ID Repository non reconnu » (`assert_enrolement_genres_inconnus`) | ajouter la valeur à la règle `sexe` de `stg_regprc__enrichissement.sql`, puis `dbt build --full-refresh --select stg_regprc__enrichissement+` (les réponses déjà lues sont relues depuis le lake) |
+| Profil des NIU : « Non renseignée » qui ne baisse plus | `docker logs mosip-cdc-spark-inscriptions` et `rattrapage.log` ; codes d'échec dans `mosip.regprc.enrichissement.erreurs` (`IDR-IDC-007` : RID inconnu de l'ID Repository, repris à chaque rattrapage) |
+| Tout ré-enrichir (règle d'extraction changée) | `truncate ods.regprc_enrichissement` (par `ods_writer`) : le rattrapage rappelle l'ID Repository pour chaque NIU ; le lake garde les anciennes réponses, dbt prend la plus récente |
 | Alerte « entry_date modifiée » | signaler à l'équipe MOSIP : la date du NIU n'est pas stable pour ces dossiers |
 | `suivi_inscription` en échec, « duplicate key value violates unique constraint » | deux liens `rid_uin_link` pour un même RID (rien ne l'interdit dans l'ODS) : `select reg_id, count(*) from ods.regprc_rid_uin_link group by 1 having count(*) > 1;`, signaler à l'équipe MOSIP ; rien n'est publié tant que le doublon reste |
 

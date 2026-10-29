@@ -35,7 +35,8 @@ Colonnes écartées parce que le relevé les montre vides ou constantes : `pkt_c
 - en continu pour les nouvelles inscriptions, plus un rattrapage du stock (≈ 6 M dossiers, environ 5 jours aux débits
   des pré-inscriptions : 32 appels/s la nuit, 8 le jour).
 
-**À préciser** : quelle API et quel point d'accès, avec le RID en entrée.
+**Précisé le 29/10/2026** : ID Repository (`/idrepository/v1/identity/idvid/{RID}`), avec le RID en entrée, pour
+les seules inscriptions qui ont un NIU ; ODS `ods.regprc_enrichissement` (voir `docs/enrolement.md`).
 
 ## 3. Data warehouse (dbt, toutes les 5 minutes)
 
