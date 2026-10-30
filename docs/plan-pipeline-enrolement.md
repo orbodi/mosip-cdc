@@ -207,8 +207,9 @@ garder la cadence de 5 minutes avec les pré-inscriptions. À mesurer au premier
 - routes `GET /enrolement/etapes`, `/en-cours`, `/delais`, `/synchronisation`, `/profil` ;
 - `devenir` (règle I4, nombre de bloqués), `territoire` (délai médian en heures, étape dominante des rejets),
   `centres` (onglet « Remontée la plus lente ») ;
-- `POST /enrolement/suivi` : RID dans le corps, contrôle de 29 chiffres, empreinte calculée en mémoire, journal, RID
-  jamais renvoyé ni journalisé ; ni plafond de recherches (décision du 26/10/2026) ni portée régionale (accès à tout
+- `POST /enrolement/suivi` : RID dans le corps, contrôle de 29 chiffres, empreinte calculée en mémoire, RID
+  jamais renvoyé ni journalisé ; registre des recherches (`bi.journal_suivi`, V8) retiré le 30/10/2026 (V12, décision du
+  responsable : un RID ne permet pas de remonter à une personne) ; ni plafond de recherches (décision du 26/10/2026) ni portée régionale (accès à tout
   le Togo, décision du 25/10/2026) ;
 - tests d'intégration sur le banc avec les vraies migrations.
 
