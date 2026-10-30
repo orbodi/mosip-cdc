@@ -12,6 +12,7 @@
 -#}
 {{ config(
     materialized='incremental',
+    unlogged=false,
     incremental_strategy='delete+insert',
     unique_key='rid',
     indexes=[

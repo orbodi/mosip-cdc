@@ -154,7 +154,9 @@ for nom in ordre:
         if genre:
             psql(f"drop {'view' if genre == 'v' else 'table'} {rel} cascade;")
         objet = "view" if cfg["materialized"] == "view" else "table"
-        psql(f"create {objet} {rel} as {sql};")
+        # unlogged (dbt-postgres) : table sans journal ; un modèle incrémental garde unlogged=false
+        sans_journal = "unlogged " if objet == "table" and cfg.get("unlogged") else ""
+        psql(f"create {sans_journal}{objet} {rel} as {sql};")
         for i, idx in enumerate(cfg.get("indexes", []) if cfg["materialized"] != "view" else []):
             u = "unique " if idx.get("unique") else ""
             psql(f'create {u}index on {rel} ({", ".join(idx["columns"])});')

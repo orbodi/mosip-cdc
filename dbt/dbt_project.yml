@@ -14,6 +14,12 @@ vars:
 
 models:
   mosip_bi:
+    # Tables reconstruites en entier à chaque passage : UNLOGGED (30/10/2026), sans journal (WAL). Elles se recalculent
+    # au passage suivant ; après un arrêt brutal du serveur, PostgreSQL les vide et dbt les reconstruit avant toute
+    # publication. Écrites toutes les 5 minutes, journalisées et archivées, elles produisaient environ 0,9 Go de WAL
+    # par passage. Les modèles incrémentaux (qui gardent leur historique d'un passage à l'autre) restent journalisés :
+    # unlogged=false dans leur config.
+    +unlogged: true
     dwh:
       +schema: dwh
       +materialized: table

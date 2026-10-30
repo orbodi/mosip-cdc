@@ -18,8 +18,11 @@ Lire d'abord `../outfit.md` (état du travail et décisions) et `README.md` (arc
      (`primary.key.mode=record_key`, offset ajouté par `InsertField$Value` en `__kafka_offset`), topic compacté ;
   4. dbt : `dwh/<domaine>/stg_*` incrémental par `__connect_offset` (lake) ou `__kafka_offset` (ODS), faits
      `dm_<domaine>/*` en tables, droits par `+grants` et usage du schéma par `+post-hook` ;
-  5. publication dans `scripts/publier-indicateurs.sh` (DELETE + INSERT dans la transaction existante, codes résolus
-     en identifiants `bi.zone`, regroupement après résolution) ; droits `bi` par un script exécuté par `bi_owner`.
+  5. publication dans `scripts/publier-indicateurs.sh`, dans la transaction existante : table temporaire `n_<table>`
+     (`LIKE bi.<table>`), puis `pg_temp.synchroniser` qui n'écrit que les lignes qui changent (jamais DELETE + INSERT
+     de toute une table : WAL archivé, incident du 30/10/2026) ; codes résolus en identifiants `bi.zone`, regroupement
+     après résolution ; droits `bi` par un script exécuté par `bi_owner`.
+- Modèle reconstruit en entier : `unlogged` (réglage du projet) ; modèle incrémental : `unlogged=false` dans sa config.
 - Correspondances de codes MOSIP dans `dbt/seeds/` ; un code inconnu compte en « non classé », jamais deviné.
 - Pas de test `unique` sur une colonne déjà garantie par une clé primaire ou un index unique : il relit toute la table à
   chaque passage sans pouvoir échouer. Un test sur une grande table ne lit que ce qui a changé (offset, `maj_le`,

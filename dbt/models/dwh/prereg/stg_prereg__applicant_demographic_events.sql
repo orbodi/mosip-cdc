@@ -6,6 +6,7 @@
 -#}
 {{ config(
     materialized='incremental',
+    unlogged=false,
     incremental_strategy='append',
     indexes=[
       {'columns': ['event_id'], 'unique': True},

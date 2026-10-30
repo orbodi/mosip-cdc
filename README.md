@@ -55,6 +55,9 @@ Le détail de l'enrôlement (règles, mise en service, reprise) est dans `docs/e
   - fraîcheur des sources dbt toutes les heures.
 - **Règle de publication** : si `dbt build` échoue (erreur ou test), rien n'est publié et l'API garde les chiffres
   précédents. Toute la publication se fait dans une seule transaction.
+  Seules les lignes qui changent sont écrites dans `bi` (`sql/publication/synchroniser.sql`), et les tables que dbt
+  reconstruit en entier sont `unlogged` : la BD traitement archive son journal (WAL), et l'ancienne publication en
+  produisait environ 830 Go par jour (30/10/2026).
 - **Journaux** : `/var/log/mosip-bi/*.log`. Les alertes du contrôle de santé sont dans `alertes.log`. `MAILTO` est vide
   dans le cron, donc personne n'est prévenu : à renseigner.
 
