@@ -48,7 +48,7 @@ Le détail de l'enrôlement (règles, mise en service, reprise) est dans `docs/e
 
 ## Exploitation
 
-- **Adresse du tableau de bord** : http://172.16.26.86:5173/enrolement (interface ens34, `FRONT_HOTE` de
+- **Adresse du tableau de bord** : http://bireg.eid.local:5173/enrolement (172.16.26.86, interface ens34 ; `FRONT_HOTE` de
   `compose/.env`). Pour qu'elle marche aussi depuis le réseau 172.16.44.0/24, les réponses aux connexions reçues sur
   ens34 repartent par ens34 (`ops/reseau/routage-ens34.sh`, remis à chaque démarrage par le service
   `routage-ens34`) ; sinon le serveur répond en direct par ens33 et le pare-feu du routeur coupe la connexion.
