@@ -1,0 +1,19 @@
+# Remet au démarrage le routage des réponses reçues sur ens34 (tableau de bord BI sur 172.16.26.86 ; détail dans
+# ops/reseau/routage-ens34.sh).
+#   cp /data/mosip-cdc/ops/reseau/routage-ens34.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now routage-ens34
+#   systemctl status routage-ens34
+[Unit]
+Description=Routage des réponses reçues sur ens34 (tableau de bord BI, 172.16.26.86)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/data/mosip-cdc
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/data/mosip-cdc/ops/reseau/routage-ens34.sh appliquer
+ExecStop=/data/mosip-cdc/ops/reseau/routage-ens34.sh retirer
+
+[Install]
+WantedBy=multi-user.target

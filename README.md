@@ -42,11 +42,16 @@ Le détail de l'enrôlement (règles, mise en service, reprise) est dans `docs/e
   sources décrites dans `spark/commun/sources.py`.
 - `scripts/` : `run-analytique.sh` (dbt build puis publication), `publier-indicateurs.sh`, `rafraichir-direct.sh`,
   `check-health.sh`, `charger-suivi.sh` (chargement complet du suivi d'un dossier, à la main).
-- `ops/` : cron (`/etc/cron.d/mosip-bi`) et logrotate.
+- `ops/` : cron (`/etc/cron.d/mosip-bi`), logrotate et `reseau/` (routage des réponses reçues sur ens34, service
+  systemd `routage-ens34`).
 - `outils/banc/` : banc de test local de la chaîne enrôlement (PostgreSQL jetable, sans Kafka).
 
 ## Exploitation
 
+- **Adresse du tableau de bord** : http://172.16.26.86:5173/enrolement (interface ens34, `FRONT_HOTE` de
+  `compose/.env`). Pour qu'elle marche aussi depuis le réseau 172.16.44.0/24, les réponses aux connexions reçues sur
+  ens34 repartent par ens34 (`ops/reseau/routage-ens34.sh`, remis à chaque démarrage par le service
+  `routage-ens34`) ; sinon le serveur répond en direct par ens33 et le pare-feu du routeur coupe la connexion.
 - **Cron** (`ops/cron/mosip-bi`, heures en UTC = heure de Lomé) :
   - chaîne analytique toutes les 5 minutes ;
   - indicateurs en direct chaque minute ;
