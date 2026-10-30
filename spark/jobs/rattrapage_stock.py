@@ -81,9 +81,18 @@ def rattraper(ids, enrichir, publier, simultanes, taille_paquet, fin,
             resultats = list(pool.map(enrichir, paquet))
             horodatage = int(time.time() * 1000)
             reussis = [r for r in resultats if r["ok"]]
-            rates = [r for r in resultats if not r["ok"]]
+            # Dossiers non appelés pendant une pause de refus d'accès : ni publiés, ni comptés comme traités
+            non_tentes = [r for r in resultats if r.get("code_erreur") == "ACCES_REFUSE"]
+            rates = [r for r in resultats if not r["ok"] and r.get("code_erreur") != "ACCES_REFUSE"]
             publier(source.topic_enrichi, source.format.enrichis(reussis, horodatage))
             publier(source.topic_erreurs, source.format.erreurs(rates, horodatage))
+            if not reussis and len(paquet) and all(r.get("acces_refuse") for r in resultats):
+                traites += len(paquet) - len(non_tentes)
+                echecs += len(rates)
+                journal(f"l'API refuse l'accès ({rates[0]['code_erreur'] if rates else 'ACCES_REFUSE'}) avec un "
+                        "jeton tout neuf : le compte n'a pas le droit d'appeler ce service (identifiants de "
+                        "compose/.env). Arrêt.")
+                break
             traites += len(paquet)
             enrichis += len(reussis)
             echecs += len(rates)

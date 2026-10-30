@@ -59,7 +59,9 @@ def traiter(lot, lot_id):
         resultats = list(pool.map(client.enrichir, ids))
     maintenant = int(time.time() * 1000)
     reussis = [r for r in resultats if r["ok"]]
-    echecs = [r for r in resultats if not r["ok"]]
+    # Pendant une pause de refus d'accès (api_client), les dossiers ne sont pas appelés : ni publiés en erreur ;
+    # ils seront repris par le rattrapage.
+    echecs = [r for r in resultats if not r["ok"] and r.get("code_erreur") != "ACCES_REFUSE"]
     publication.publier(spark, source.topic_enrichi, source.format.enrichis(reussis, maintenant))
     publication.publier(spark, source.topic_erreurs, source.format.erreurs(echecs, maintenant))
     print(f"{time.strftime('%F %T')} lot {lot_id} : {len(ids)} dossiers, {len(reussis)} enrichis, "

@@ -105,6 +105,14 @@ def annee_mois(texte, mois_inconnu=False):
     return annee, mois
 
 
+# Un refus (401, 403, KER-ATH) avec un jeton de moins d'une minute n'est pas une expiration : le compte n'a pas le droit
+# d'appeler ce service. Après REFUS_AVANT_PAUSE refus de ce genre d'affilée, le client n'appelle plus l'API pendant
+# PAUSE_REFUS_S (réponse ACCES_REFUSE, sans appel ni authentification) : jamais de réauthentification en boucle.
+JETON_FRAIS_S = 60
+REFUS_AVANT_PAUSE = 5
+PAUSE_REFUS_S = 600
+
+
 def _echec(cle, identifiant, api_statut, code, message="", definitif=False):
     return {"ok": False, cle: identifiant, "api_statut": api_statut,
             "code_erreur": code, "message": (message or "")[:200], "definitif": definitif}
@@ -138,6 +146,9 @@ class ClientApi:
         self._jeton = None
         self._generation = 0
         self._authentifie_le = 0.0
+        self._verrou_refus = threading.Lock()
+        self._refus_consecutifs = 0
+        self._refuse_jusqua = 0.0
         self._authentifier()
 
     # ---------- Authentification ----------
@@ -172,6 +183,32 @@ class ClientApi:
             if self._generation == generation_utilisee:
                 self._authentifier()
 
+    # ---------- Refus d'accès ----------
+
+    def acces_refuse(self):
+        """Vrai pendant la pause qui suit des refus répétés d'un jeton tout neuf."""
+        return time.monotonic() < self._refuse_jusqua
+
+    def _jeton_frais(self, generation):
+        return generation == self._generation and time.monotonic() - self._authentifie_le < JETON_FRAIS_S
+
+    def _refus_d_acces(self, cle, identifiant, api_statut, code):
+        with self._verrou_refus:
+            self._refus_consecutifs += 1
+            if self._refus_consecutifs >= REFUS_AVANT_PAUSE and not self.acces_refuse():
+                self._refuse_jusqua = time.monotonic() + PAUSE_REFUS_S
+                log.error("l'API refuse un jeton tout neuf (%s, %s fois d'affilée) : le compte n'a pas accès à ce "
+                          "service ; plus aucun appel pendant %s min", code, self._refus_consecutifs,
+                          PAUSE_REFUS_S // 60)
+        resultat = _echec(cle, identifiant, api_statut, code, definitif=True)
+        resultat["acces_refuse"] = True
+        return resultat
+
+    def _succes(self):
+        if self._refus_consecutifs:
+            with self._verrou_refus:
+                self._refus_consecutifs = 0
+
     # ---------- Appel d'un dossier ----------
 
     def _identite(self, donnees):
@@ -184,6 +221,10 @@ class ClientApi:
     def enrichir(self, identifiant):
         """Renvoie {"ok": True, <clé>, api_statut, champs utiles} ou un échec décrit sans donnée personnelle."""
         cle = self.CLE
+        if self.acces_refuse():
+            resultat = _echec(cle, identifiant, None, "ACCES_REFUSE", definitif=True)
+            resultat["acces_refuse"] = True
+            return resultat
         resultat = _echec(cle, identifiant, None, "NON_TENTE")
         for essai in range(config.API_ESSAIS):
             if essai:
@@ -199,6 +240,8 @@ class ClientApi:
             self._http.cookies.clear()
 
             if r.status_code in (401, 403):
+                if self._jeton_frais(generation):
+                    return self._refus_d_acces(cle, identifiant, r.status_code, f"HTTP {r.status_code}")
                 self._renouveler(generation)
                 resultat = _echec(cle, identifiant, r.status_code, f"HTTP {r.status_code}")
                 continue
@@ -217,6 +260,8 @@ class ClientApi:
             if erreurs:
                 code = str(erreurs[0].get("errorCode") or "ERREUR_API")
                 if code.startswith("KER-ATH"):                    # jeton refusé ou expiré
+                    if self._jeton_frais(generation):
+                        return self._refus_d_acces(cle, identifiant, 200, code)
                     self._renouveler(generation)
                     resultat = _echec(cle, identifiant, 200, code)
                     continue
@@ -225,6 +270,7 @@ class ClientApi:
             identite = self._identite(donnees)
             if not isinstance(identite, dict):
                 return _echec(cle, identifiant, 200, "SANS_IDENTITE", definitif=True)
+            self._succes()
             return {"ok": True, cle: identifiant, "api_statut": 200, **self._extraire(identite)}
         return resultat
 

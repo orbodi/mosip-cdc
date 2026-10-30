@@ -9,6 +9,6 @@
   "primary.key.mode": "kafka",
   "delete.enabled": "false",
   "schema.evolution": "basic",
-  "collection.name.format": "${topic}",
+  "collection.name.format": "mosip_regprc_enrichissement",
   "use.time.zone": "UTC"
 }

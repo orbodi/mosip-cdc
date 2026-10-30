@@ -212,7 +212,8 @@ laissées vides ou absentes, ce sont celles de `API_*` qui servent. Ne jamais le
    Attendu : « 200 traités, 200 enrichis » ou presque ; puis, une minute plus tard,
    `select count(*), count(*) filter (where genre is null) from ods.regprc_enrichissement;` et
    `select genre, count(*) from lake.mosip_regprc_enrichissement group by 1;` (Femme, Homme). Un échec
-   `KER-ATH-…` ou HTTP 401/403 : identifiants refusés pour l'ID Repository (étape « Avant tout »).
+   `KER-ATH-…` ou HTTP 401/403 : identifiants refusés pour l'ID Repository (étape « Avant tout ») ; le
+   rattrapage s'arrête alors de lui-même (« l'API refuse l'accès … Arrêt »), après cinq refus d'un jeton tout neuf.
 9. Job en continu des NIU : `docker compose up -d spark-stream-inscriptions` ; puis
    `docker compose restart spark-stream` pour que le job des pré-inscriptions charge le code commun mis à jour (même
    point de reprise : il repart où il s'était arrêté). Journal : `docker logs -f mosip-cdc-spark-inscriptions`
@@ -245,8 +246,10 @@ connecteurs. Le profil reste publié avec les réponses déjà reçues ; revenir
 | Slot perdu | nouveau slot, nouveau snapshot (l'ODS est réécrit sur place), puis la ligne précédente |
 | Connecteur source arrêté plus d'un jour | MOSIP en PostgreSQL 12 ne plafonne pas les journaux retenus : supprimer le slot (DBA), puis nouveau snapshot |
 | Alerte « genre de l'ID Repository non reconnu » (`assert_enrolement_genres_inconnus`) | ajouter la valeur à la règle `sexe` de `stg_regprc__enrichissement.sql`, puis `dbt build --full-refresh --select stg_regprc__enrichissement+` (les réponses déjà lues sont relues depuis le lake) |
+| Rattrapage ou job en continu : « l'API refuse un jeton tout neuf … plus aucun appel pendant 10 min » | le compte de `IDREPO_*` (à défaut `API_*`) s'authentifie mais n'a pas le droit d'appeler l'ID Repository : demander à l'équipe MOSIP un client autorisé, le mettre dans `compose/.env`, puis `docker compose up -d spark-stream-inscriptions` (relit `.env`). Le client ne se réauthentifie jamais en boucle (essai du 29/10/2026 : 600 authentifications avant cette protection) |
 | Profil des NIU : « Non renseignée » qui ne baisse plus | `docker logs mosip-cdc-spark-inscriptions` et `rattrapage.log` ; codes d'échec dans `mosip.regprc.enrichissement.erreurs` (`IDR-IDC-007` : RID inconnu de l'ID Repository, repris à chaque rattrapage) |
 | Tout ré-enrichir (règle d'extraction changée) | `truncate ods.regprc_enrichissement` (par `ods_writer`) : le rattrapage rappelle l'ID Repository pour chaque NIU ; le lake garde les anciennes réponses, dbt prend la plus récente |
+| Passage dbt en échec, « tuple concurrently updated » sur un modèle de `dm_enrolement` | deux `GRANT` simultanés sur le schéma (30/10/2026, 4 h 36 à 5 h 11 : rien publié) ; corrigé dans `dbt_project.yml` (le post-hook n'accorde l'usage que s'il manque). S'il revient sur un autre objet : relever le modèle et l'objet, ne pas baisser le nombre de threads sans mesure |
 | Alerte « entry_date modifiée » | signaler à l'équipe MOSIP : la date du NIU n'est pas stable pour ces dossiers |
 | `suivi_inscription` en échec, « duplicate key value violates unique constraint » | deux liens `rid_uin_link` pour un même RID (rien ne l'interdit dans l'ODS) : `select reg_id, count(*) from ods.regprc_rid_uin_link group by 1 having count(*) > 1;`, signaler à l'équipe MOSIP ; rien n'est publié tant que le doublon reste |
 

@@ -36,8 +36,16 @@ models:
       +schema: dm_enrolement
       +materialized: table
       +grants: {select: ['publisher_ro']}
-      # Usage du schéma pour la publication : donné par dbt, dès sa création (sans script à lancer à part)
-      +post-hook: "grant usage on schema {{ this.schema }} to publisher_ro"
+      # Usage du schéma pour la publication : donné par dbt, dès sa création (sans script à lancer à part), et seulement
+      # s'il manque. Un GRANT sur le schéma réécrit sa ligne du catalogue même quand le droit existe déjà : lancé par
+      # plusieurs modèles construits en parallèle, il échouait (« tuple concurrently updated », 30/10/2026), et un seul
+      # modèle en échec bloque toute la publication.
+      +post-hook: >-
+        do $$ begin
+          if not has_schema_privilege('publisher_ro', '{{ this.schema }}', 'USAGE') then
+            execute 'grant usage on schema {{ this.schema }} to publisher_ro';
+          end if;
+        end $$
 
 seeds:
   mosip_bi:
