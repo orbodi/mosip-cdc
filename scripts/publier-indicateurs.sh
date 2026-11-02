@@ -35,16 +35,19 @@ BEGIN;
 \i sql/publication/zone_niveau.sql
 \set n centre
 \i sql/publication/zone_niveau.sql
--- Contrat du backend (tables créées par Flyway, propriétaire bi_owner)
-CREATE TEMP TABLE n_fait_preinscription_jour (LIKE bi.fait_preinscription_jour) ON COMMIT DROP;
+-- Contrat du backend (tables créées par Flyway, propriétaire bi_owner). Tables temporaires « INCLUDING DEFAULTS »
+-- (02/11/2026) : une colonne ajoutée par une migration avec une valeur par défaut garde cette valeur tant que ce
+-- script ne l'écrit pas. Sans cela, LIKE recopie NOT NULL sans le défaut et toute la publication échoue entre le
+-- redémarrage de l'API et le git pull du pipeline (V14, 02/11/2026, 09 h 30 à 09 h 40).
+CREATE TEMP TABLE n_fait_preinscription_jour (LIKE bi.fait_preinscription_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_preinscription_jour (jour, statut, sexe, demandes, consommees)
 SELECT jour, statut, sexe, demandes, consommees FROM dm_preinscription.fait_preinscription_jour;
 SELECT pg_temp.synchroniser('bi.fait_preinscription_jour', 'n_fait_preinscription_jour', ARRAY['jour', 'statut']);
-CREATE TEMP TABLE n_fait_preinscription_profil_jour (LIKE bi.fait_preinscription_profil_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_preinscription_profil_jour (LIKE bi.fait_preinscription_profil_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_preinscription_profil_jour (jour, sexe, tranche_age, nationalite, demandes)
 SELECT jour, sexe, tranche_age, nationalite, demandes FROM dm_preinscription.fait_preinscription_profil_jour;
 SELECT pg_temp.synchroniser('bi.fait_preinscription_profil_jour', 'n_fait_preinscription_profil_jour', ARRAY['jour', 'sexe', 'tranche_age', 'nationalite']);
-CREATE TEMP TABLE n_fait_preinscription_zone_jour (LIKE bi.fait_preinscription_zone_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_preinscription_zone_jour (LIKE bi.fait_preinscription_zone_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_preinscription_zone_jour (jour, zone_id, demandes)
 SELECT f.jour, z.id, f.demandes
 FROM dm_preinscription.fait_preinscription_zone_jour f
@@ -59,7 +62,7 @@ ON CONFLICT (source) DO UPDATE
        dernier_chargement = excluded.dernier_chargement;
 -- Enrôlement (tables des migrations V1 à V3 du backend). Un code centre absent de bi.zone va sous « Centre non
 -- référencé » (zone créée par V2) ; plusieurs codes inconnus s'y additionnent, d'où le regroupement.
-CREATE TEMP TABLE n_fait_enrolement_jour (LIKE bi.fait_enrolement_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_enrolement_jour (LIKE bi.fait_enrolement_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_enrolement_jour (jour, centre_id, sexe, tranche_age, type_demande, inscriptions, niu_generes,
                                      en_cours, echouees, rejetees, non_classees, en_reprocessing)
 SELECT f.jour, coalesce(z.id, h.id), f.sexe, f.tranche_age, f.type_demande,
@@ -70,7 +73,7 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3, 4, 5;
 SELECT pg_temp.synchroniser('bi.fait_enrolement_jour', 'n_fait_enrolement_jour', ARRAY['jour', 'centre_id', 'sexe', 'tranche_age', 'type_demande']);
-CREATE TEMP TABLE n_fait_niu_jour (LIKE bi.fait_niu_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_niu_jour (LIKE bi.fait_niu_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_niu_jour (jour, centre_id, type_demande, niu_generes)
 SELECT f.jour, coalesce(z.id, h.id), f.type_demande, sum(f.niu_generes)
 FROM dm_enrolement.fait_niu_jour f
@@ -80,7 +83,7 @@ GROUP BY 1, 2, 3;
 SELECT pg_temp.synchroniser('bi.fait_niu_jour', 'n_fait_niu_jour', ARRAY['jour', 'centre_id', 'type_demande']);
 -- Profil des NIU (lot 6, ID Repository) : région du centre résolue en bi.zone (« Hors référentiel » sinon), puis
 -- regroupé par sexe et âge d'une part, par nationalité d'autre part. Même total que bi.fait_niu_jour.
-CREATE TEMP TABLE n_fait_niu_profil_jour (LIKE bi.fait_niu_profil_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_niu_profil_jour (LIKE bi.fait_niu_profil_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_niu_profil_jour (jour, zone_id, sexe, tranche_age, niu_generes)
 SELECT f.jour, coalesce(z.id, h.id), f.sexe, f.tranche_age, sum(f.niu_generes)
 FROM dm_enrolement.fait_niu_profil_jour f
@@ -88,7 +91,7 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'HORS_REFERENTIEL') h
 LEFT JOIN bi.zone z ON z.code = f.code_region AND z.niveau = 'region'
 GROUP BY 1, 2, 3, 4;
 SELECT pg_temp.synchroniser('bi.fait_niu_profil_jour', 'n_fait_niu_profil_jour', ARRAY['jour', 'zone_id', 'sexe', 'tranche_age']);
-CREATE TEMP TABLE n_fait_niu_nationalite_jour (LIKE bi.fait_niu_nationalite_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_niu_nationalite_jour (LIKE bi.fait_niu_nationalite_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_niu_nationalite_jour (jour, zone_id, nationalite, niu_generes)
 SELECT f.jour, coalesce(z.id, h.id), f.nationalite, sum(f.niu_generes)
 FROM dm_enrolement.fait_niu_profil_jour f
@@ -105,7 +108,7 @@ ON CONFLICT (source) DO UPDATE
        derniere_donnee    = excluded.derniere_donnee,
        dernier_chargement = excluded.dernier_chargement;
 -- Enrôlement v3 (migration V7 du backend) : étapes d'arrêt, stocks, délais. Même résolution des centres.
-CREATE TEMP TABLE n_fait_arret_etape_jour (LIKE bi.fait_arret_etape_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_arret_etape_jour (LIKE bi.fait_arret_etape_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_arret_etape_jour (jour, centre_id, type_demande, devenir, etape, etape_libelle, etape_ordre,
                                       inscriptions)
 SELECT f.jour, coalesce(z.id, h.id), f.type_demande, f.devenir, f.etape, f.etape_libelle, f.etape_ordre,
@@ -115,7 +118,7 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3, 4, 5, 6, 7;
 SELECT pg_temp.synchroniser('bi.fait_arret_etape_jour', 'n_fait_arret_etape_jour', ARRAY['jour', 'centre_id', 'type_demande', 'devenir', 'etape']);
-CREATE TEMP TABLE n_stock_en_cours (LIKE bi.stock_en_cours) ON COMMIT DROP;
+CREATE TEMP TABLE n_stock_en_cours (LIKE bi.stock_en_cours INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_stock_en_cours (centre_id, type_demande, etape, etape_libelle, etape_ordre, anciennete, inscriptions,
                                calcule_le)
 SELECT coalesce(z.id, h.id), f.type_demande, f.etape, f.etape_libelle, f.etape_ordre, f.anciennete,
@@ -127,7 +130,7 @@ GROUP BY 1, 2, 3, 4, 5, 6;
 SELECT pg_temp.synchroniser('bi.stock_en_cours', 'n_stock_en_cours', ARRAY['centre_id', 'type_demande', 'etape', 'anciennete']);
 -- Motifs (migration V9 du backend, décision du 26/10/2026) : étape (reg_stage_name) et motif (status_comment rangé
 -- par seeds/ref_regprc_motifs.csv), jamais le texte de MOSIP. Même résolution des centres.
-CREATE TEMP TABLE n_fait_arret_motif_jour (LIKE bi.fait_arret_motif_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_arret_motif_jour (LIKE bi.fait_arret_motif_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_arret_motif_jour (jour, centre_id, type_demande, devenir, stage, stage_libelle, stage_ordre, motif,
                                       motif_libelle, motif_commentaire, motif_piste, inscriptions)
 SELECT f.jour, coalesce(z.id, h.id), f.type_demande, f.devenir, f.stage, f.stage_libelle, f.stage_ordre, f.motif,
@@ -137,7 +140,7 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11;
 SELECT pg_temp.synchroniser('bi.fait_arret_motif_jour', 'n_fait_arret_motif_jour', ARRAY['jour', 'centre_id', 'type_demande', 'devenir', 'stage', 'motif']);
-CREATE TEMP TABLE n_stock_en_cours_motif (LIKE bi.stock_en_cours_motif) ON COMMIT DROP;
+CREATE TEMP TABLE n_stock_en_cours_motif (LIKE bi.stock_en_cours_motif INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_stock_en_cours_motif (centre_id, type_demande, stage, stage_libelle, stage_ordre, motif, motif_libelle,
                                      motif_commentaire, motif_piste, anciennete, inscriptions, calcule_le,
                                      en_reprocessing)
@@ -149,7 +152,7 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;
 SELECT pg_temp.synchroniser('bi.stock_en_cours_motif', 'n_stock_en_cours_motif', ARRAY['centre_id', 'type_demande', 'stage', 'motif', 'anciennete']);
-CREATE TEMP TABLE n_fait_delai_jour (LIKE bi.fait_delai_jour) ON COMMIT DROP;
+CREATE TEMP TABLE n_fait_delai_jour (LIKE bi.fait_delai_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_delai_jour (jour, centre_id, type_demande, mesure, classe_h, paquets)
 SELECT f.jour, coalesce(z.id, h.id), f.type_demande, f.mesure, f.classe_h, sum(f.paquets)
 FROM dm_enrolement.fait_delai_jour f
@@ -157,7 +160,7 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3, 4, 5;
 SELECT pg_temp.synchroniser('bi.fait_delai_jour', 'n_fait_delai_jour', ARRAY['jour', 'centre_id', 'type_demande', 'mesure', 'classe_h']);
-CREATE TEMP TABLE n_stock_synchro_non_recue (LIKE bi.stock_synchro_non_recue) ON COMMIT DROP;
+CREATE TEMP TABLE n_stock_synchro_non_recue (LIKE bi.stock_synchro_non_recue INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_stock_synchro_non_recue (centre_id, anciennete, paquets, plus_ancienne_le, calcule_le)
 SELECT coalesce(z.id, h.id), f.anciennete, sum(f.paquets), min(f.plus_ancienne_le), max(f.calcule_le)
 FROM dm_enrolement.stock_synchro_non_recue f
@@ -166,7 +169,7 @@ LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2;
 SELECT pg_temp.synchroniser('bi.stock_synchro_non_recue', 'n_stock_synchro_non_recue', ARRAY['centre_id', 'anciennete']);
 -- Catalogue des motifs (V11) : libellés lus par l'API du suivi d'un dossier, remplacés à chaque passage.
-CREATE TEMP TABLE n_ref_motif (LIKE bi.ref_motif) ON COMMIT DROP;
+CREATE TEMP TABLE n_ref_motif (LIKE bi.ref_motif INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_ref_motif (motif, libelle, commentaire, piste)
 SELECT motif, libelle, commentaire, piste FROM dm_enrolement.ref_motif;
 SELECT pg_temp.synchroniser('bi.ref_motif', 'n_ref_motif', ARRAY['motif']);

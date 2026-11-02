@@ -243,8 +243,9 @@ reprocessing dans la carte En cours. L'ordre compte : la publication écrit la c
 qu'après la migration V13.
 
 1. API (`mosip-bi-reporting`, branche `dashboard`) : tests, puis redémarrage. Flyway applique
-   `V13__reprocessing_enrolement.sql` (colonne à 0 par défaut, contrainte ≤ `en_cours`) ; l'encart affiche 0 et les
-   deux cartes de demandes ont déjà leurs chiffres. Les droits de `publisher` sur la table ne changent pas.
+   `V13__reprocessing_enrolement.sql` (colonne à 0 par défaut, contrainte ≤ `en_cours`) ; les deux cartes de
+   demandes ont déjà leurs chiffres. Avant le correctif `INCLUDING DEFAULTS` (voir l'incident plus bas), la
+   publication échouait jusqu'à l'étape 2 ; depuis, l'encart affiche 0 en attendant. Les droits de `publisher` sur la table ne changent pas.
 2. **Sous le verrou de la chaîne analytique** : `git pull` de `mosip-cdc`
    (`flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`). Au passage suivant, dbt reconstruit
    `fait_enrolement_jour` (table entière) et la publication ne réécrit que les lignes qui ont du reprocessing.
@@ -257,9 +258,17 @@ Retour arrière : revenir au commit précédent de `mosip-cdc` ; au passage suiv
 **Onglet « En reprocessing » (02/11/2026)** du bloc « Où s'arrêtent les paquets » : mêmes motifs, étapes et
 bloqués que l'onglet En cours, pour la partie en reprocessing (colonne `en_reprocessing` de `bi.stock_en_cours_motif`,
 migration V14 ; stock à l'instant, sans période). Même ordre de mise en service : API d'abord (V14 appliquée au
-redémarrage, onglet à 0), puis `git pull` de `mosip-cdc` sous le verrou. Vérifier ensuite que
+redémarrage), puis `git pull` de `mosip-cdc` sous le verrou. Vérifier ensuite que
 `select sum(en_reprocessing) from bi.stock_en_cours_motif;` égale `select sum(en_reprocessing) from
 bi.fait_enrolement_jour;` (le test dbt l'impose).
+
+**Incident du 02/11/2026 (09 h 30 à 09 h 40) et correctif.** Entre l'application de V14 et le `git pull` du
+pipeline, toute la publication a échoué (« null value in column en_reprocessing of relation n_stock_en_cours_motif ») :
+les tables temporaires créées par `LIKE` recopiaient l'obligation de valeur non nulle sans le défaut, et l'ancien
+script n'écrivait pas la nouvelle colonne. Aucun chiffre perdu ni faussé (transaction annulée, chiffres précédents
+gardés). Depuis, les tables temporaires sont créées `INCLUDING DEFAULTS` : une colonne ajoutée avec une valeur par
+défaut prend cette valeur tant que le script ne l'écrit pas, et l'ordre « API d'abord, puis pipeline » est sans
+risque (vérifié sur le banc : ancien script en échec, nouveau script publié, sur une base déjà migrée).
 
 ## Exploitation et reprise
 
