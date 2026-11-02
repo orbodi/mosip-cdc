@@ -23,8 +23,10 @@ mosip_regprc ─┘      │                                                    
 | Pré-inscriptions | `prereg.applicant_demographic` + API de pré-inscription (Spark) | `mosip-prereg-cdc`, `lake-prereg`, `ods-prereg`, `lake-enrichissement`, `ods-enrichissement` (**non versionnés**) | `dwh/prereg`, `dm_preinscription` | `bi.fait_preinscription_*`, `source_fraicheur('preinscription')` |
 | Enrôlement | `regprc.registration`, `rid_uin_link`, `registration_list` | `mosip-regprc-cdc`, `ods-regprc-registration`, `ods-regprc-rid-uin-link`, `ods-regprc-registration-list`, `lake-regprc-rid-uin-link` | `dwh/regprc` (`suivi_inscription`), `dm_enrolement` | `bi.fait_enrolement_jour`, `fait_niu_jour`, `fait_arret_etape_jour`, `stock_en_cours`, `fait_delai_jour`, `stock_synchro_non_recue`, `suivi_dossier` (empreinte du RID), `source_fraicheur('enrolement')` |
 | Profil des NIU (lot 6) | ID Repository appelé avec le RID des NIU (Spark, `--source inscriptions`) | `lake-regprc-enrichissement`, `ods-regprc-enrichissement` | `stg_regprc__enrichissement`, `dim_centre_region`, `fait_niu_profil_jour` | `bi.fait_niu_profil_jour`, `fait_niu_nationalite_jour` |
+| Impression et remise des cartes (lot 8, capture seulement au 02/11/2026) | `regprc.printing_orders`, `printing_orders_details`, `printing_shipped_cards` | `mosip-regprc-impression-cdc`, `ods-regprc-printing-orders`, `ods-regprc-printing-shipped-cards`, `lake-regprc-printing-orders-details` | à venir (lot 8b) | à venir (lot 8b) |
 
-Le détail de l'enrôlement (règles, mise en service, reprise) est dans `docs/enrolement.md`.
+Le détail de l'enrôlement (règles, mise en service, reprise) est dans `docs/enrolement.md` ; celui de l'impression dans
+`docs/impression.md` (relevé : `docs/releve-impression.md`).
 
 ## Arborescence
 

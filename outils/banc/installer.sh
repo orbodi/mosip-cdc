@@ -73,16 +73,18 @@ insert into lake.mosip_prereg_applicant_demographic values ('mosip.prereg.applic
   'Booked','fra','2026-10-01 10:00','2026-10-02 10:00','false','r',1,1792900000000);
 SQL
 en ingest_writer -f "$CDC/sql/traitement/04_enrichissement.sql" -f "$CDC/sql/traitement/15_lake_regprc.sql" \
-  -f "$CDC/sql/traitement/19_lake_regprc_enrichissement.sql"
+  -f "$CDC/sql/traitement/19_lake_regprc_enrichissement.sql" -f "$CDC/sql/traitement/22_lake_regprc_impression.sql"
 # Les fichiers de données du banc (01_snapshot.sql, 02_flux.sql) jouent les connecteurs : ods_writer écrit aussi le
 # journal du lake, ce que fait ingest_writer sur le serveur.
 en ingest_writer -c "grant usage on schema lake to ods_writer; grant insert on lake.mosip_regprc_rid_uin_link,
-                     lake.mosip_regprc_enrichissement, lake.mosip_master_dynamic_field to ods_writer"
+                     lake.mosip_regprc_enrichissement, lake.mosip_master_dynamic_field,
+                     lake.mosip_regprc_printing_orders_details to ods_writer"
 en ingest_writer -c "grant select on lake.mosip_prereg_enrichissement to dbt_runner"
 en ods_writer -c "create table ods.applicant_demographic (prereg_id text primary key, status_code text,
                   cr_dtimes timestamp, upd_dtimes timestamp);
                   grant select on ods.applicant_demographic to publisher"
-en ods_writer -f "$CDC/sql/traitement/14_ods_regprc.sql" -f "$CDC/sql/traitement/20_ods_regprc_enrichissement.sql"
+en ods_writer -f "$CDC/sql/traitement/14_ods_regprc.sql" -f "$CDC/sql/traitement/20_ods_regprc_enrichissement.sql" \
+  -f "$CDC/sql/traitement/21_ods_regprc_impression.sql"
 
 # Premier passage dbt (crée dwh et dm_*), droits supposés existants sur dwh et dm_preinscription, tables ref / ind
 "$(dirname "$0")/passage.sh" --sans-publication || true

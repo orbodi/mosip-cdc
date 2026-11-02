@@ -46,6 +46,19 @@ $K --create --if-not-exists --topic mosip.regprc.rid_uin_link \
 $K --create --if-not-exists --topic __debezium-heartbeat.mosip_regprc \
    --partitions 1 --replication-factor 1 --config cleanup.policy=compact
 
+# Impression et remise des cartes (connecteur mosip-regprc-impression-cdc, lot 8, 02/11/2026), une partition par topic :
+# - printing_orders et printing_shipped_cards : compactés comme registration (dernier état de chaque commande et de
+#   chaque carte, l'ODS se reconstruit depuis le topic) ;
+# - printing_orders_details : 28 jours, comme rid_uin_link ; le lake garde tout l'historique.
+$K --create --if-not-exists --topic mosip.regprc.printing_orders \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.compaction.lag.ms=86400000
+$K --create --if-not-exists --topic mosip.regprc.printing_shipped_cards \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.compaction.lag.ms=86400000
+$K --create --if-not-exists --topic mosip.regprc.printing_orders_details \
+   --partitions 1 --replication-factor 1 --config retention.ms=2419200000
+$K --create --if-not-exists --topic __debezium-heartbeat.mosip_regprc_impression \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact
+
 $K --describe --topic mosip.prereg.enrichissement
 $K --describe --topic mosip.prereg.enrichissement.erreurs
 $K --describe --topic mosip.regprc.registration
@@ -55,3 +68,7 @@ $K --describe --topic mosip.regprc.enrichissement
 $K --describe --topic mosip.regprc.enrichissement.erreurs
 $K --describe --topic mosip.master.location
 $K --describe --topic mosip.master.registration_center
+$K --describe --topic mosip.regprc.printing_orders
+$K --describe --topic mosip.regprc.printing_shipped_cards
+$K --describe --topic mosip.regprc.printing_orders_details
+$K --describe --topic __debezium-heartbeat.mosip_regprc_impression
