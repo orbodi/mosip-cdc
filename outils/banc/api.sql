@@ -2,7 +2,10 @@
 with recursive perimetre as (select id from bi.zone where code = cast(:'zone' as text)
   union all select z.id from bi.zone z join perimetre p on z.parent_id = p.id)
 select coalesce(sum(f.inscriptions),0) inscriptions, coalesce(sum(f.niu_generes),0) niu, coalesce(sum(f.en_cours),0) en_cours,
-       coalesce(sum(f.echouees),0) echouees, coalesce(sum(f.rejetees),0) rejetees, coalesce(sum(f.non_classees),0) non_classees
+       coalesce(sum(f.echouees),0) echouees, coalesce(sum(f.rejetees),0) rejetees, coalesce(sum(f.non_classees),0) non_classees,
+       coalesce(sum(f.en_reprocessing),0) en_reprocessing,
+       coalesce(sum(f.inscriptions) filter (where f.type_demande in ('UPDATE', 'RES_UPDATE')),0) demandes_mise_a_jour,
+       coalesce(sum(f.inscriptions) filter (where f.type_demande = 'LOST'),0) demandes_niu_perdu
 from bi.fait_enrolement_jour f where (cast(nullif(:'zone','') as text) is null or f.centre_id in (select id from perimetre));
 \set zone R1
 with recursive perimetre as (select id from bi.zone where code = cast(:'zone' as text)

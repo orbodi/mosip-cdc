@@ -44,6 +44,9 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
 - **Motifs** (28/10/2026) : rejetés = Rejeté par le superviseur du centre 1 + Doublon biométrique trouvé par l'ABIS 1 ;
   échoués = Iris non concordant 1 ; en cours = Paquet reçu, en attente de traitement 1 + Motif non répertorié 1 (R7,
   message absent du catalogue) ; chaque motif publié avec sa ligne « À vérifier » (`motif_piste`).
+- **Reprocessing et types de demande** (31/10/2026) : 1 dossier en reprocessing, la récupération de NIU (LOST) du
+  24/10, en cours avec une dernière transaction REPROCESS ; le dossier RESUMABLE (non classé), lui aussi en REPROCESS,
+  n'y compte pas. `api.sql` : 1 demande de mise à jour (UPDATE rejetée du 02/10), 1 demande de NIU perdu.
 - **Contrôles** : 0 échec ; 7 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
   1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié,
   1 genre de l'ID Repository non reconnu (« Inconnu », R7).

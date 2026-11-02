@@ -61,10 +61,10 @@ ON CONFLICT (source) DO UPDATE
 -- référencé » (zone créée par V2) ; plusieurs codes inconnus s'y additionnent, d'où le regroupement.
 CREATE TEMP TABLE n_fait_enrolement_jour (LIKE bi.fait_enrolement_jour) ON COMMIT DROP;
 INSERT INTO n_fait_enrolement_jour (jour, centre_id, sexe, tranche_age, type_demande, inscriptions, niu_generes,
-                                     en_cours, echouees, rejetees, non_classees)
+                                     en_cours, echouees, rejetees, non_classees, en_reprocessing)
 SELECT f.jour, coalesce(z.id, h.id), f.sexe, f.tranche_age, f.type_demande,
        sum(f.inscriptions), sum(f.niu_generes), sum(f.en_cours), sum(f.echouees), sum(f.rejetees),
-       sum(f.non_classees)
+       sum(f.non_classees), sum(f.en_reprocessing)
 FROM dm_enrolement.fait_enrolement_jour f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'

@@ -10,6 +10,10 @@
     niu_generes + en_cours + echouees + rejetees + non_classees = inscriptions.
   - Paquets synchronisés mais pas encore reçus : exclus (ils n'ont pas de jour de réception ; voir
     stock_synchro_non_recue).
+  - en_reprocessing (migration V13, 31/10/2026) : dont en cours dont la dernière transaction MOSIP est REPROCESS
+    (etape_statut = latest_trn_status_code) ; MOSIP les reprendra. Partie de en_cours, jamais un statut de plus :
+    en_reprocessing ≤ en_cours (contrainte de bi, test assert_enrolement_reprocessing_parmi_en_cours). Un dossier
+    échoué, rejeté ou non classé dont la dernière transaction est REPROCESS n'y compte pas (décision du 31/10/2026).
 -#}
 {{ config(indexes=[{'columns': ['jour', 'code_centre', 'type_demande'], 'unique': True}]) }}
 
@@ -24,7 +28,9 @@ select
     cast(count(*) filter (where devenir = 'en_cours') as integer)       as en_cours,
     cast(count(*) filter (where devenir = 'echoue') as integer)         as echouees,
     cast(count(*) filter (where devenir = 'rejete') as integer)         as rejetees,
-    cast(count(*) filter (where devenir = 'non_classe') as integer)     as non_classees
+    cast(count(*) filter (where devenir = 'non_classe') as integer)     as non_classees,
+    cast(count(*) filter (where devenir = 'en_cours' and etape_statut = 'REPROCESS') as integer)
+                                                                        as en_reprocessing
 from {{ ref('suivi_inscription') }}
 where devenir <> 'non_recu'
 group by 1, 2, 3, 4, 5

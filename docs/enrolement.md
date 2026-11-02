@@ -64,6 +64,12 @@ Profil des NIU (lot 6) : rid_uin_link (lien créé) ─→ Spark ─→ ID Repos
   motif, le catalogue donne un libellé qui traduit fidèlement le message de MOSIP (un message distinct = un motif, par
   exemple empreintes, iris et visage séparés) et une ligne « À vérifier » (`piste`, publiée en `motif_piste`, V10) :
   ce que le message veut dire et où chercher (décision du 28/10/2026).
+- **Reprocessing** (décision du 31/10/2026) : `fait_enrolement_jour.en_reprocessing` compte les en cours dont la
+  dernière transaction MOSIP est REPROCESS (`etape_statut`) : MOSIP les reprendra. Une partie des en cours, jamais un
+  statut de plus ; un échoué, un rejeté ou un non classé en REPROCESS n'y compte pas. Les demandes de mise à jour
+  (UPDATE et RES_UPDATE) et de NIU perdu (LOST) n'ont pas de colonne : l'API les lit dans `type_demande`.
+  `regprc.registration_transaction` n'est pas captée : son analyse du 30/10/2026 (lecture par échantillons, sans texte
+  ni référence affichés) a montré que `registration` suffit pour ces trois chiffres.
 - **Centre** : 5 premiers chiffres du RID ; un code absent de `bi.zone` va sous « Centre non référencé ».
 - **Incrémental** : seuls les RID touchés depuis le passage précédent sont recalculés. Les chiffres qui dépendent de
   l'heure (ancienneté des en-cours, synchronisés de plus de 7 jours) sont calculés à chaque passage dans
@@ -71,7 +77,7 @@ Profil des NIU (lot 6) : rid_uin_link (lien créé) ─→ Spark ─→ ID Repos
 
 | Modèle `dm_enrolement` | Publié dans | Indicateurs |
 |---|---|---|
-| `fait_enrolement_jour` | `bi.fait_enrolement_jour` | I1, I2 cohorte, I4 |
+| `fait_enrolement_jour` | `bi.fait_enrolement_jour` | I1, I2 cohorte, I4, reprocessing (V13), types de demande |
 | `fait_niu_jour` | `bi.fait_niu_jour` | I2 flux, I3 |
 | `fait_arret_etape_jour` | `bi.fait_arret_etape_jour` (V7) | I5, I6 |
 | `stock_en_cours` | `bi.stock_en_cours` (V7) | I7, « dont bloqués » |
@@ -91,7 +97,7 @@ et nationalité (libellé de la liste MOSIP « nationality » si la valeur y est
 Un NIU pas encore enrichi compte en I, âge inconnu, « Non renseignée » : le total égale toujours les NIU générés.
 
 **Contrôles bloquants** (rien n'est publié en cas d'échec, pré-inscriptions comprises) : somme des devenirs =
-inscriptions ; ODS = suivi = faits ; NIU flux = NIU cohorte ; profil des NIU = NIU générés, jour par jour ; étapes = Devenir ; motifs = Devenir ; histogrammes
+inscriptions ; reprocessing ≤ en cours ; ODS = suivi = faits ; NIU flux = NIU cohorte ; profil des NIU = NIU générés, jour par jour ; étapes = Devenir ; motifs = Devenir ; histogrammes
 complets ; codes uniques dans les seeds. L'unicité du RID n'est pas un test : clés primaires de l'ODS et index unique de
 `dwh.suivi_inscription` (un doublon fait échouer ce modèle ; allègement du 25/10/2026, un passage dbt de 88 s).
 **Alertes** : centre non référencé, statut ou étape inconnus, horodatage du RID illisible, `entry_date` modifiée,
@@ -229,6 +235,24 @@ laissées vides ou absentes, ce sont celles de `API_*` qui servent. Ne jamais le
 Retour arrière : `docker compose stop spark-stream-inscriptions`, retirer ses lignes du cron, supprimer les deux
 connecteurs. Le profil reste publié avec les réponses déjà reçues ; revenir au commit précédent de `mosip-cdc` vide
 `bi.fait_niu_profil_jour` au passage suivant (la pyramide repasse à 0).
+
+### Reprocessing et types de demande (31/10/2026)
+
+Bloc « Devenir des inscriptions », variante A : demandes de mise à jour et de NIU perdu sous le total, dossiers en
+reprocessing dans la carte En cours. L'ordre compte : la publication écrit la colonne `en_reprocessing`, qui n'existe
+qu'après la migration V13.
+
+1. API (`mosip-bi-reporting`, branche `dashboard`) : tests, puis redémarrage. Flyway applique
+   `V13__reprocessing_enrolement.sql` (colonne à 0 par défaut, contrainte ≤ `en_cours`) ; l'encart affiche 0 et les
+   deux cartes de demandes ont déjà leurs chiffres. Les droits de `publisher` sur la table ne changent pas.
+2. **Sous le verrou de la chaîne analytique** : `git pull` de `mosip-cdc`
+   (`flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`). Au passage suivant, dbt reconstruit
+   `fait_enrolement_jour` (table entière) et la publication ne réécrit que les lignes qui ont du reprocessing.
+3. Vérifier : `select sum(en_cours), sum(en_reprocessing) from bi.fait_enrolement_jour;` (reprocessing ≈ le relevé du
+   30/10/2026 : 7 783 sur ≈ 64 700 en cours, à quelques centaines près) ; journal `analytique.log` sans échec.
+
+Retour arrière : revenir au commit précédent de `mosip-cdc` ; au passage suivant, la publication remet la colonne
+à 0 (sa valeur par défaut). La colonne ne se retire pas (migrations en ajout seulement).
 
 ## Exploitation et reprise
 
