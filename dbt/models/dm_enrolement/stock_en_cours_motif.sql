@@ -6,6 +6,9 @@
   - anciennete : depuis la dernière transaction, comme stock_en_cours (moins_7j, 7_30j, plus_30j = bloqués).
   - Libellés : comme fait_arret_motif_jour.
   - Contrôle (assert_enrolement_motifs_egal_devenir) : total = en_cours de fait_enrolement_jour.
+  - en_reprocessing (migration V14, onglet « En reprocessing » du 02/11/2026) : dont dernière transaction MOSIP
+    REPROCESS, même règle que fait_enrolement_jour.en_reprocessing ; ≤ inscriptions de la ligne
+    (assert_enrolement_reprocessing_parmi_en_cours) et total = en_reprocessing de fait_enrolement_jour.
 -#}
 {{ config(indexes=[{'columns': ['code_centre', 'type_demande', 'stage', 'motif', 'anciennete'], 'unique': True}]) }}
 
@@ -25,6 +28,8 @@ select
         else 'plus_30j'
     end                                                     as anciennete,
     cast(count(*) as integer)                               as inscriptions,
+    cast(count(*) filter (where s.etape_statut = 'REPROCESS') as integer)
+                                                            as en_reprocessing,
     now()                                                   as calcule_le
 from {{ ref('suivi_inscription') }} s
 left join {{ ref('motif_inscription') }} m on m.rid = s.rid

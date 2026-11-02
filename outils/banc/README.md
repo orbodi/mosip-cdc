@@ -46,7 +46,10 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
   message absent du catalogue) ; chaque motif publié avec sa ligne « À vérifier » (`motif_piste`).
 - **Reprocessing et types de demande** (31/10/2026) : 1 dossier en reprocessing, la récupération de NIU (LOST) du
   24/10, en cours avec une dernière transaction REPROCESS ; le dossier RESUMABLE (non classé), lui aussi en REPROCESS,
-  n'y compte pas. `api.sql` : 1 demande de mise à jour (UPDATE rejetée du 02/10), 1 demande de NIU perdu.
+  n'y compte pas. `api.sql` : 1 demande de mise à jour (UPDATE rejetée du 02/10), 1 demande de NIU perdu. Onglet
+  « En reprocessing » (02/11/2026) : `bi.stock_en_cours_motif` en compte 1, sur la ligne Génération du NIU, motif
+  « Motif non répertorié » (AUTRE), comme `bi.fait_enrolement_jour` (test `assert_enrolement_motifs_egal_devenir`).
+  Depuis le 02/11/2026, 6 alertes et non 7 : l'alerte `entry_date` modifiée ne regarde que les jours récents.
 - **Contrôles** : 0 échec ; 7 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
   1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié,
   1 genre de l'ID Repository non reconnu (« Inconnu », R7).

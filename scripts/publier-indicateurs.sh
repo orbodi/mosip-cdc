@@ -139,9 +139,11 @@ GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11;
 SELECT pg_temp.synchroniser('bi.fait_arret_motif_jour', 'n_fait_arret_motif_jour', ARRAY['jour', 'centre_id', 'type_demande', 'devenir', 'stage', 'motif']);
 CREATE TEMP TABLE n_stock_en_cours_motif (LIKE bi.stock_en_cours_motif) ON COMMIT DROP;
 INSERT INTO n_stock_en_cours_motif (centre_id, type_demande, stage, stage_libelle, stage_ordre, motif, motif_libelle,
-                                     motif_commentaire, motif_piste, anciennete, inscriptions, calcule_le)
+                                     motif_commentaire, motif_piste, anciennete, inscriptions, calcule_le,
+                                     en_reprocessing)
 SELECT coalesce(z.id, h.id), f.type_demande, f.stage, f.stage_libelle, f.stage_ordre, f.motif, f.motif_libelle,
-       f.motif_commentaire, f.motif_piste, f.anciennete, sum(f.inscriptions), max(f.calcule_le)
+       f.motif_commentaire, f.motif_piste, f.anciennete, sum(f.inscriptions), max(f.calcule_le),
+       sum(f.en_reprocessing)
 FROM dm_enrolement.stock_en_cours_motif f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
