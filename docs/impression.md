@@ -175,3 +175,10 @@ Mise en service, dans cet ordre (comme V15) :
 3. Pipeline : `flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`, puis un passage.
 4. Vérifier : `SELECT sum(erreurs_idps) FROM bi.fait_demande_impression_jour;` (≈ 172 354) et
    `SELECT anciennete, sum(niu) FROM bi.stock_niu_sans_commande GROUP BY 1;` (≈ 55 au total au relevé).
+
+Mise en service faite le 03/11/2026 (15 h 10 à 15 h 55) : V16 appliquée, droit donné à `publisher`, passage publié
+(PASS=189, WARN=1 sur l'enrôlement). Chiffres : 172 353 commandes avec erreur d'envoi à l'IDPS (une erreur porte sur
+un `request_id` sans commande, hors du compte) ; NIU sans commande : 10 au data mart, 30 puis 73 dans l'ODS à
+15 h 53, **aucun de plus de 7 jours**. Le stock est un flux : la commande suit le NIU en quelques minutes, et le total
+du relevé (55) en était une photo. Aucune commande reçue depuis le 02/11 pour un NIU de plus de 7 jours. La note de la
+Vue d'ensemble ne s'affiche donc que s'il y a des NIU bloqués (plus de 7 jours).
