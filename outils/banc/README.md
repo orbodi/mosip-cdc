@@ -1,7 +1,7 @@
 # Banc de test de la chaîne enrôlement
 
 Ce banc vérifie les modèles dbt de l'enrôlement et la publication vers `bi` sur un PostgreSQL local jetable, sans
-Kafka ni MOSIP. Il utilise les vraies migrations du backend (V1 à V9), les vrais scripts SQL de droits et le vrai
+Kafka ni MOSIP. Il utilise les vraies migrations du backend (V1 à V15), les vrais scripts SQL de droits et le vrai
 `scripts/publier-indicateurs.sh`.
 
 `minidbt.py` est un remplaçant minimal de dbt (Jinja, `ref`, `source`, `is_incremental`, `this`, seeds, index, grants,
@@ -19,7 +19,7 @@ Claude. Là où dbt est installé, `dbt build` reste la référence : le banc ne
 
 ```
 export PGHOST=/tmp PGUSER=postgres          # PostgreSQL de test
-outils/banc/installer.sh                    # base mosip_bi vierge, migrations V1 à V9 ; la chaîne tourne avec une ODS vide
+outils/banc/installer.sh                    # base mosip_bi vierge, migrations V1 à V15 ; la chaîne tourne avec une ODS vide
 psql -U ods_writer -d mosip_bi -f outils/banc/01_snapshot.sql      # snapshot initial : 8 inscriptions, 11 synchronisations
 outils/banc/passage.sh
 psql -U ods_writer -d mosip_bi -f outils/banc/02_flux.sql          # NIU, réception, nouvelle synchronisation…
@@ -50,6 +50,15 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
   « En reprocessing » (02/11/2026) : `bi.stock_en_cours_motif` en compte 1, sur la ligne Génération du NIU, motif
   « Motif non répertorié » (AUTRE), comme `bi.fait_enrolement_jour` (test `assert_enrolement_motifs_egal_devenir`).
   Depuis le 02/11/2026, 6 alertes et non 7 : l'alerte `entry_date` modifiée ne regarde que les jours récents.
+- **Impression des cartes** (lot 8b, 03/11/2026) : 7 commandes dans `dwh.suivi_carte` ; le deuxième passage en
+  recalcule 5 (C1 par le lien RID → NIU modifié, C2 par sa remise, C3 par son annulation, C6 et C7 par leur
+  commande). `bi.fait_demande_impression_jour` : 7 demandes = 4 envoyées + 2 en attente (C3, C7) + 1 rejetée (C4),
+  dont 2 annulées (C5 CANCEL_PHOTO, C3 NON_REPERTORIE). `bi.fait_carte_jour` : 4 cartes expédiées = 2 remises
+  (hors ligne, en ligne) + 2 à remettre (la carte orpheline K9 n'est comptée nulle part). `bi.fait_delai_carte_jour` :
+  18 jours (C1) et 20 jours (C2), médiane 18. `etat_bi.sql` montre les contrôles ; `--full-refresh` redonne les mêmes
+  tables. 3 alertes de plus que l'enrôlement : centre 99999 non référencé, motif d'annulation non répertorié, et
+  `assert_impression_anomalies_cartes` (2 lignes pour C3 : carte expédiée d'une commande en attente, date de remise
+  sans remise) ; au premier passage, `assert_impression_cartes_sans_commande` (K9) à la place du motif.
 - **Contrôles** : 0 échec ; 7 alertes attendues : 2 centres non référencés (99999, 88888), 1 devenir non classé,
   1 statut inconnu, 1 horodatage de RID illisible, 1 `entry_date` modifiée, 1 commentaire de MOSIP non répertorié,
   1 genre de l'ID Repository non reconnu (« Inconnu », R7).

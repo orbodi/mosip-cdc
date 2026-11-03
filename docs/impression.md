@@ -1,8 +1,8 @@
 # Impression et remise des cartes : chaîne de données et mise en service
 
 Relevé et décisions : `docs/releve-impression.md` (02/11/2026). Indicateurs : section « Impression des cartes » de
-`docs/indicateurs.md` (`mosip-bi-reporting`, branche `main`). Ce document couvre le lot 8a (capture) ; les calculs, le
-contrat `bi` et la page viendront aux lots 8b et 8c.
+`docs/indicateurs.md` (`mosip-bi-reporting`, branche `main`). Ce document couvre le lot 8a (capture) et le lot 8b
+(calculs, contrat `bi`, API) ; la page viendra au lot 8c.
 
 ```
 mosip_regprc                        Kafka (1 partition par topic)                    BD traitement mosip_bi
@@ -86,3 +86,67 @@ le lot 8b.
   `registration`, dont Debezium reçoit les changements, les écarte et fait avancer le slot à chaque battement.
 - **Compter des commandes, pas des événements** (lot 8b) : certaines cartes sont mises en boîte plusieurs fois, et
   certaines remises enregistrées deux fois (relevé, étape 2).
+
+## Lot 8b : calculs, contrat `bi` et API (03/11/2026)
+
+```
+ods.regprc_printing_orders ─────────┐
+ods.regprc_printing_shipped_cards ──┼─ dwh.suivi_carte ─┬─ dm_impression.fait_demande_impression_jour ─┐
+lake.mosip_regprc_printing_orders_  │  (une ligne par   ├─ dm_impression.fait_carte_jour ──────────────┤ publier-   bi.* (V15)
+  details (annulations) ────────────┤   commande,       ├─ dm_impression.fait_delai_carte_jour ────────┼ indicateurs → API
+ods.regprc_rid_uin_link (NIU) ──────┘   incrémental)    ├─ dm_impression.fait_annulation_impression_jour┤ .sh        /api/v1/cartes
+                                                        └─ dm_impression.fraicheur_impression ─────────┘            (source « cartes »)
+```
+
+**Règles** (dictionnaire `docs/indicateurs.md` de `mosip-bi-reporting`, section Impression des cartes) :
+- une ligne par commande, première date de chaque jalon : on compte des commandes, jamais des événements ;
+- deux lectures « cohorte » : les commandes au jour de réception (`entry_date`), dans leur statut d'aujourd'hui
+  (demandes, en attente `NEW`, rejetées `KO`, annulées à part) ; les cartes au jour d'expédition, remises ou non
+  aujourd'hui (expédiées, remises par mode, à remettre, délai du NIU à la remise) ;
+- l'ancienneté des cartes à remettre se lit dans le jour d'expédition : l'API la calcule à la lecture, sans stock ;
+- territoire : centre du RID (cinq premiers chiffres), résolu en `bi.zone` à la publication ;
+- correspondances : `seeds/ref_impression_statuts.csv`, `ref_impression_modes_remise.csv`,
+  `ref_impression_motifs_annulation.csv` ; un code inconnu compte en « non classée », mode « autre » ou motif
+  `NON_REPERTORIE`, et lève une alerte.
+
+**Contrôles** (tests dbt bloquants, et contraintes de `bi`) : statuts = demandes, annulées ≤ demandes
+(`assert_impression_statuts_egal_demandes`) ; remises + à remettre = expédiées, modes = remises
+(`assert_impression_remises_egal_expediees`) ; expédiées ≤ demandes par centre
+(`assert_impression_expediees_parmi_demandes`) ; motifs = annulées (`assert_impression_annulations_egal_motifs`) ;
+histogramme des délais ≤ remises (`assert_impression_delais_parmi_remises`). Alertes, sur les seules commandes du
+dernier passage : anomalies connues (`assert_impression_anomalies_cartes`), carte sans commande
+(`assert_impression_cartes_sans_commande`), codes inconnus, centre non référencé.
+
+**API** (`mosip-bi-reporting`, branche `dashboard`, package `cartes`) : `GET /api/v1/cartes/impression`, `/semaines`,
+`/territoire`, `/attente`, `/centres`, `/annulations` (paramètres `du`, `au`, `zone`).
+
+### Mise en service du lot 8b
+
+L'ordre compte : la migration V15 avant le script de publication qui écrit ses tables, sinon toute la publication
+échoue (comme V14 le 02/11/2026).
+
+1. **API** (`mosip-bi-reporting`, branche `dashboard`) : `git pull`, tests, redémarrage ; Flyway applique V15 (quatre
+   tables vides). Vérifier : `select version, success from flyway_schema_history where version = '15';`
+2. **Droits** (bi_owner) :
+   `PGPASSWORD="$BI_OWNER_PASSWORD" psql -h 172.16.44.108 -U bi_owner -d mosip_bi -f sql/traitement/23_droits_bi_impression.sql`
+   (depuis un clone à jour de `mosip-cdc` ; le script ne fait que des GRANT).
+3. **Pipeline** : `flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`. Le passage suivant construit
+   `dwh.suivi_carte` en entier (6,2 M de commandes, premier passage plus long), puis les faits, puis publie.
+4. **Vérifier**, après le premier passage publié (en `api_reader` ou `dbt_runner`) :
+   ```sql
+   SELECT sum(demandes), sum(en_attente), sum(rejetees), sum(annulees) FROM bi.fait_demande_impression_jour;
+   -- ≈ 6 186 000, ≈ 2 250, 8, 693
+   SELECT sum(expediees), sum(remises), sum(a_remettre) FROM bi.fait_carte_jour;
+   -- ≈ 6 088 000, ≈ 4 643 000, ≈ 1 445 000 (relevé du 02/11/2026)
+   SELECT source, premiere_donnee, derniere_donnee FROM bi.source_fraicheur WHERE source = 'cartes';
+   ```
+   et `curl -s http://localhost:8080/api/v1/cartes/impression | jq` (API du serveur).
+5. **Requête 5, vérification complète des cartes sans commande** (`dbt_runner`, à lancer à la mise en service puis de
+   temps en temps ; l'alerte dbt ne regarde que les cartes récentes) :
+   ```sql
+   SELECT count(*) FROM ods.regprc_printing_shipped_cards c
+   WHERE NOT EXISTS (SELECT 1 FROM ods.regprc_printing_orders o WHERE o.request_id = c.request_id);   -- 0 attendu
+   ```
+
+Retour arrière : revenir au commit précédent de `mosip-cdc` (la publication n'écrit plus les tables V15, qui restent
+en place) ; V15 est additive et n'a pas à être défaite.

@@ -68,3 +68,36 @@ insert into lake.mosip_master_dynamic_field
   is_active, is_deleted, cr_dtimes, upd_dtimes, __deleted, __op, __lsn, __source_ts_ms) values
  ('mosip.master.dynamic_field',0,0,'DF1','nationality','Nationalité','string',
   '[{"code":"TOGO","value":"Togo","langCode":"fra","active":true}]','fra',true,false,now(),null,'false','r',1,0);
+
+-- Impression des cartes (lot 8), tel que l'écrivent ods-regprc-printing-orders, ods-regprc-printing-shipped-cards et
+-- lake-regprc-printing-orders-details (snapshot : historique réduit aux annulations et aux erreurs d'envoi).
+--  C1  R1     10001  OK, carte K1 expédiée le 06/10, remise hors ligne le 20/10 (NIU le 01/10 : 18 jours)
+--  C2  R4     99999  OK, carte K2 expédiée le 10/10, pas encore remise ; centre non référencé
+--  C3  10002         NEW, carte K3 expédiée le 15/07 quand même, NOT_DELIVERED SUPPORT avec une date de remise
+--                    (deux anomalies du relevé)
+--  C4  20001         KO (rejetée)
+--  C5  20001         OK, annulée le 06/10 (CANCEL_PHOTO), sans carte
+--  C6  10001         NEW (en attente)
+--  K9                carte dont la commande est absente (alerte assert_impression_cartes_sans_commande)
+insert into ods.regprc_printing_orders
+ (id, rid, request_id, prc_status, entry_date, issuing_date, __deleted, __op, __source_ts_ms, __kafka_offset) values
+ (1,'10001000010000120261001080000','Q1','OK','2026-10-02 08:00','2026-10-02 16:30','false','r',1792900000000,0),
+ (2,'99999000010000420261005080000','Q2','OK','2026-10-07 09:00','2026-10-07 17:00','false','r',1792900000000,1),
+ (3,'10002000099999920260709080000','Q3','NEW','2026-07-10 10:00',null,'false','r',1792900000000,2),
+ (4,'20001000099999820261004080000','Q4','KO','2026-10-04 11:00',null,'false','r',1792900000000,3),
+ (5,'20001000099999720261005080000','Q5','OK','2026-10-05 12:00','2026-10-05 20:00','false','r',1792900000000,4),
+ (6,'10001000099999620261009080000','Q6','NEW','2026-10-09 13:00',null,'false','r',1792900000000,5);
+
+insert into ods.regprc_printing_shipped_cards
+ (id, request_id, entry_date, delivery_status, delivery_mode, delivery_date, __deleted, __op, __source_ts_ms,
+  __kafka_offset) values
+ (11,'Q1','2026-10-06 10:00','DELIVERED','OFFLINE','2026-10-20 11:00','false','r',1792900000000,0),
+ (12,'Q2','2026-10-10 10:00','NOT_DELIVERED',null,null,'false','r',1792900000000,1),
+ (13,'Q3','2026-07-15 10:00','NOT_DELIVERED','SUPPORT','2026-07-20 10:00','false','r',1792900000000,2),
+ (19,'Q-ORPHELINE','2026-10-11 10:00','NOT_DELIVERED',null,null,'false','r',1792900000000,3);
+
+insert into lake.mosip_regprc_printing_orders_details
+ (__connect_topic, __connect_partition, __connect_offset, id, request_id, status_code, reason_code, sub_status_code,
+  cr_dtimes, __deleted, __op, __lsn, __source_ts_ms) values
+ ('mosip.regprc.printing_orders_details',0,0,101,'Q1','PRINT-REQUEST-ERR','CORE-PRINTING-IDPS-1',null,'2026-10-02 12:00','false','r',300,1792900000000),
+ ('mosip.regprc.printing_orders_details',0,1,102,'Q5','NEW-PRINT-CANCELED','CANCEL_PHOTO','TERMINATED','2026-10-06 09:00','false','r',300,1792900000000);

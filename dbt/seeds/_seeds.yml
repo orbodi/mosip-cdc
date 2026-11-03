@@ -38,3 +38,37 @@ seeds:
         data_tests:
           - unique
           - not_null
+
+  # Impression des cartes (lot 8, docs/releve-impression.md) : statut de la commande (prc_status), mode de remise
+  # (delivery_mode) et motif d'annulation (reason_code de l'événement NEW-PRINT-CANCELED). Un code absent compte en
+  # « non classée », mode « autre » ou motif « NON_REPERTORIE », jamais deviné.
+  - name: ref_impression_statuts
+    columns:
+      - name: prc_status
+        data_tests:
+          - unique
+          - not_null
+      - name: statut
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['en_attente', 'envoyee', 'rejetee']
+
+  - name: ref_impression_modes_remise
+    columns:
+      - name: delivery_mode
+        data_tests:
+          - unique
+          - not_null
+      - name: mode
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['hors_ligne', 'en_ligne', 'support']
+
+  - name: ref_impression_motifs_annulation
+    columns:
+      - name: reason_code
+        data_tests:
+          - unique
+          - not_null

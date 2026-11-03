@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: fait_demande_impression_jour
+    description: "Contrat bi.fait_demande_impression_jour : commandes par jour de réception et centre, statut d'aujourd'hui."
+    columns:
+      - name: jour
+        data_tests:
+          - not_null
+      - name: code_centre
+        description: "Cinq premiers chiffres du RID ; un code absent du référentiel lève une alerte."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: code
+              config:
+                severity: warn
+
+  - name: fait_carte_jour
+    description: "Contrat bi.fait_carte_jour : cartes par jour d'expédition et centre, remises ou à remettre aujourd'hui."
+    columns:
+      - name: jour
+        data_tests:
+          - not_null
+      - name: code_centre
+        data_tests:
+          - not_null
+
+  - name: fait_delai_carte_jour
+    description: "Contrat bi.fait_delai_carte_jour : histogramme du délai du NIU à la carte remise (I-DELAI)."
+    columns:
+      - name: classe_j
+        data_tests:
+          - not_null
+
+  - name: fait_annulation_impression_jour
+    description: "Contrat bi.fait_annulation_impression_jour : commandes annulées par jour de réception, centre et motif."
+    columns:
+      - name: motif
+        data_tests:
+          - not_null
+
+  - name: fraicheur_impression
+    description: "Bornes des données d'impression (bi.source_fraicheur, source cartes)."

@@ -21,6 +21,12 @@ sources:
         description: >
           Réponses de l'ID Repository pour les inscriptions qui ont un NIU (connecteur lake-regprc-enrichissement,
           lot 6), appelé par le RID : genre, nationalité, année et mois de naissance seulement. Jamais le NIU.
+      - name: mosip_regprc_printing_orders_details
+        description: >
+          Historique des commandes d'impression (regprc.printing_orders_details, connecteurs mosip-regprc-impression-cdc
+          et lake-regprc-printing-orders-details, lot 8), jamais modifié : id, request_id, status_code, reason_code,
+          sub_status_code, cr_dtimes. Snapshot réduit aux annulations et aux erreurs d'envoi à l'IDPS ; ensuite tous
+          les événements. Jamais details (texte libre) ni cr_by.
       - name: mosip_master_location
         description: "Tous les changements de master.location (connecteurs mosip-master-cdc et lake-master)."
       - name: mosip_master_registration_center
@@ -44,3 +50,15 @@ sources:
         description: "État courant de regprc.rid_uin_link : lien inscription → NIU, sans le NIU (entry_date = date du NIU)."
       - name: regprc_registration_list
         description: "État courant de regprc.registration_list : synchronisations des paquets, décision du poste."
+      - name: regprc_printing_orders
+        description: >
+          État courant de regprc.printing_orders (connecteur ods-regprc-printing-orders, lot 8) : une ligne par
+          commande d'impression, sans le NIU. Le RID et request_id ne sont jamais publiés vers bi.
+        loaded_at_field: "to_timestamp(__source_ts_ms / 1000.0)"
+        freshness:
+          warn_after: {count: 6, period: hour}
+          error_after: {count: 48, period: hour}
+      - name: regprc_printing_shipped_cards
+        description: >
+          État courant de regprc.printing_shipped_cards (connecteur ods-regprc-printing-shipped-cards, lot 8) : une
+          ligne par carte expédiée, avec sa remise. Jamais les numéros de carte et de colis ni l'agent.

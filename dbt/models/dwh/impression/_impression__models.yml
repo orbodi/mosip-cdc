@@ -1,0 +1,60 @@
+version: 2
+
+# Unicité : commande_id est la clé primaire de l'ODS (sql/traitement/21_ods_regprc_impression.sql) et l'index unique de
+# dwh.suivi_carte ; pas de test « unique » qui relirait 6 M de lignes à chaque passage. Les alertes de données ne
+# regardent que les lignes écrites au dernier passage (maj_le) : tests singuliers assert_impression_*.
+
+models:
+  - name: stg_regprc__printing_orders
+    description: "État courant de regprc.printing_orders (ODS) : une ligne par commande d'impression (clé : commande_id)."
+
+  - name: stg_regprc__printing_shipped_cards
+    description: "État courant de regprc.printing_shipped_cards (ODS) : une ligne par carte expédiée et sa remise."
+
+  - name: stg_regprc__printing_annulations
+    description: "Annulations des commandes (événements NEW-PRINT-CANCELED du lake) : une ligne par événement."
+
+  - name: suivi_carte
+    description: >
+      Table pivot de l'impression : une ligne par commande, première date de chaque jalon (commande, envoi,
+      expédition, remise, annulation), statut regroupé, mode de remise et date du NIU ; commande_id unique par index.
+    columns:
+      - name: statut
+        description: "prc_status regroupé ; un code absent de ref_impression_statuts compte en non_classee (alerte)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['en_attente', 'envoyee', 'rejetee', 'non_classee']
+          - accepted_values:
+              arguments:
+                values: ['en_attente', 'envoyee', 'rejetee']
+              config:
+                severity: warn
+                where: "maj_le = (select max(maj_le) from dwh.suivi_carte)"
+      - name: jour_commande
+        description: "Jour de réception de la commande ; une commande sans date n'entre dans aucun fait (alerte)."
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+                where: "maj_le = (select max(maj_le) from dwh.suivi_carte)"
+      - name: mode_remise
+        description: "Mode de remise regroupé ; autre = delivery_mode absent de ref_impression_modes_remise (alerte)."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['hors_ligne', 'en_ligne', 'support']
+              config:
+                severity: warn
+                where: "maj_le = (select max(maj_le) from dwh.suivi_carte)"
+      - name: motif_annulation
+        description: "Motif d'annulation ; NON_REPERTORIE = reason_code absent de ref_impression_motifs_annulation (alerte)."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('ref_impression_motifs_annulation')
+                field: motif
+              config:
+                severity: warn
+                where: "maj_le = (select max(maj_le) from dwh.suivi_carte)"

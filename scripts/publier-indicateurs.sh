@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publie les indicateurs calculés par dbt : contrat bi du tableau de bord (mosip-bi-reporting : référentiel,
-# pré-inscriptions, enrôlement), puis ref et ind.
+# pré-inscriptions, enrôlement, impression des cartes), puis ref et ind.
 # Tout est remplacé dans une seule transaction : l'API lit l'ancienne version jusqu'au COMMIT,
 # sans jamais voir une table vide ni être bloquée.
 # Tables bi des faits (30/10/2026) : la nouvelle version est calculée dans une table temporaire (non journalisée), puis
@@ -168,6 +168,52 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2;
 SELECT pg_temp.synchroniser('bi.stock_synchro_non_recue', 'n_stock_synchro_non_recue', ARRAY['centre_id', 'anciennete']);
+-- Impression des cartes (migration V15 du backend, lot 8) : commandes, cartes, délais et annulations, même résolution
+-- des centres que l'enrôlement (centre du RID, « Centre non référencé » sinon).
+CREATE TEMP TABLE n_fait_demande_impression_jour (LIKE bi.fait_demande_impression_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_demande_impression_jour (jour, centre_id, demandes, envoyees, en_attente, rejetees, non_classees,
+                                             annulees)
+SELECT f.jour, coalesce(z.id, h.id), sum(f.demandes), sum(f.envoyees), sum(f.en_attente), sum(f.rejetees),
+       sum(f.non_classees), sum(f.annulees)
+FROM dm_impression.fait_demande_impression_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2;
+SELECT pg_temp.synchroniser('bi.fait_demande_impression_jour', 'n_fait_demande_impression_jour', ARRAY['jour', 'centre_id']);
+CREATE TEMP TABLE n_fait_carte_jour (LIKE bi.fait_carte_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_carte_jour (jour, centre_id, expediees, remises, remises_hors_ligne, remises_en_ligne,
+                                remises_support, remises_autre, a_remettre)
+SELECT f.jour, coalesce(z.id, h.id), sum(f.expediees), sum(f.remises), sum(f.remises_hors_ligne),
+       sum(f.remises_en_ligne), sum(f.remises_support), sum(f.remises_autre), sum(f.a_remettre)
+FROM dm_impression.fait_carte_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2;
+SELECT pg_temp.synchroniser('bi.fait_carte_jour', 'n_fait_carte_jour', ARRAY['jour', 'centre_id']);
+CREATE TEMP TABLE n_fait_delai_carte_jour (LIKE bi.fait_delai_carte_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_delai_carte_jour (jour, centre_id, classe_j, cartes)
+SELECT f.jour, coalesce(z.id, h.id), f.classe_j, sum(f.cartes)
+FROM dm_impression.fait_delai_carte_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2, 3;
+SELECT pg_temp.synchroniser('bi.fait_delai_carte_jour', 'n_fait_delai_carte_jour', ARRAY['jour', 'centre_id', 'classe_j']);
+CREATE TEMP TABLE n_fait_annulation_impression_jour (LIKE bi.fait_annulation_impression_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_annulation_impression_jour (jour, centre_id, motif, motif_libelle, demandes)
+SELECT f.jour, coalesce(z.id, h.id), f.motif, min(f.motif_libelle), sum(f.demandes)
+FROM dm_impression.fait_annulation_impression_jour f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2, 3;
+SELECT pg_temp.synchroniser('bi.fait_annulation_impression_jour', 'n_fait_annulation_impression_jour', ARRAY['jour', 'centre_id', 'motif']);
+INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
+SELECT 'cartes', 'Impression des cartes', 2, premiere_donnee, derniere_donnee, now()
+FROM dm_impression.fraicheur_impression
+WHERE derniere_donnee IS NOT NULL
+ON CONFLICT (source) DO UPDATE
+   SET premiere_donnee    = excluded.premiere_donnee,
+       derniere_donnee    = excluded.derniere_donnee,
+       dernier_chargement = excluded.dernier_chargement;
 -- Catalogue des motifs (V11) : libellés lus par l'API du suivi d'un dossier, remplacés à chaque passage.
 CREATE TEMP TABLE n_ref_motif (LIKE bi.ref_motif INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_ref_motif (motif, libelle, commentaire, piste)

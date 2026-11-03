@@ -1,0 +1,5 @@
+reason_code,motif,libelle
+CANCEL_PHOTO,CANCEL_PHOTO,Photo à reprendre
+CANCEL_SEX,CANCEL_SEX,Sexe à corriger
+CANCEL_NAME,CANCEL_NAME,Nom à corriger
+PERSONALIZATION_MANAGER_REPORTED_ERROR,PERSONALIZATION_MANAGER_REPORTED_ERROR,Erreur signalée à la personnalisation

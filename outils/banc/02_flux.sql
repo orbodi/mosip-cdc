@@ -52,3 +52,32 @@ insert into ods.regprc_enrichissement values
 on conflict (rid) do update set genre = excluded.genre, nationalite = excluded.nationalite,
   annee_naissance = excluded.annee_naissance, mois_naissance = excluded.mois_naissance,
   api_statut = excluded.api_statut, enrichi_le = excluded.enrichi_le;
+
+-- Impression des cartes (lot 8) : changements après le snapshot.
+--  K2  remise en ligne le 26/10 (NIU de R4 le 06/10 : 20 jours)
+--  C6  envoyée le 25/10, carte K6 expédiée le 27/10
+--  C7  nouvelle commande pour R2 (NIU du 25/10), en attente
+--  C3  annulée avec un motif absent du catalogue (alerte : NON_REPERTORIE)
+--  C1  le NIU de R1 change d'heure (lien modifié) : la commande est recalculée, même délai (18 jours)
+insert into ods.regprc_printing_orders
+ (id, rid, request_id, prc_status, entry_date, issuing_date, __deleted, __op, __source_ts_ms, __kafka_offset) values
+ (6,'10001000099999620261009080000','Q6','OK','2026-10-09 13:00','2026-10-25 08:00','false','u',1792890000000,6),
+ (7,'10001000010000220260704080000','Q7','NEW','2026-10-26 09:00',null,'false','c',1792890000000,7)
+on conflict (id) do update set prc_status = excluded.prc_status, entry_date = excluded.entry_date,
+  issuing_date = excluded.issuing_date, __op = excluded.__op, __source_ts_ms = excluded.__source_ts_ms,
+  __kafka_offset = excluded.__kafka_offset;
+
+insert into ods.regprc_printing_shipped_cards
+ (id, request_id, entry_date, delivery_status, delivery_mode, delivery_date, __deleted, __op, __source_ts_ms,
+  __kafka_offset) values
+ (12,'Q2','2026-10-10 10:00','DELIVERED','ONLINE','2026-10-26 15:00','false','u',1792890000000,4),
+ (16,'Q6','2026-10-27 10:00','NOT_DELIVERED',null,null,'false','c',1792890000000,5)
+on conflict (id) do update set delivery_status = excluded.delivery_status, delivery_mode = excluded.delivery_mode,
+  delivery_date = excluded.delivery_date, __op = excluded.__op, __source_ts_ms = excluded.__source_ts_ms,
+  __kafka_offset = excluded.__kafka_offset;
+
+insert into lake.mosip_regprc_printing_orders_details
+ (__connect_topic, __connect_partition, __connect_offset, id, request_id, status_code, reason_code, sub_status_code,
+  cr_dtimes, __deleted, __op, __lsn, __source_ts_ms) values
+ ('mosip.regprc.printing_orders_details',0,2,103,'Q2','CARD-DELIVERED',null,null,'2026-10-26 15:00','false','c',400,1792890000000),
+ ('mosip.regprc.printing_orders_details',0,3,104,'Q3','NEW-PRINT-CANCELED','CANCEL_AUTRE','TERMINATED','2026-10-27 09:00','false','c',401,1792890000000);

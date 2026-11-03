@@ -38,6 +38,17 @@ models:
         +grants: {select: ['publisher_ro']}
       fait_preinscription_zone_jour:
         +grants: {select: ['publisher_ro']}
+    dm_impression:
+      +schema: dm_impression
+      +materialized: table
+      +grants: {select: ['publisher_ro']}
+      # Usage du schéma pour la publication : comme dm_enrolement ci-dessous.
+      +post-hook: >-
+        do $$ begin
+          if not has_schema_privilege('publisher_ro', '{{ this.schema }}', 'USAGE') then
+            execute 'grant usage on schema {{ this.schema }} to publisher_ro';
+          end if;
+        end $$
     dm_enrolement:
       +schema: dm_enrolement
       +materialized: table
@@ -66,3 +77,9 @@ seeds:
       +column_types: {motif: text, libelle: text, commentaire: text, regle: text, priorite: integer, piste: text}
     ref_regprc_stages:
       +column_types: {stage: text, libelle: text, ordre: integer}
+    ref_impression_statuts:
+      +column_types: {prc_status: text, statut: text, libelle: text}
+    ref_impression_modes_remise:
+      +column_types: {delivery_mode: text, mode: text, libelle: text}
+    ref_impression_motifs_annulation:
+      +column_types: {reason_code: text, motif: text, libelle: text}

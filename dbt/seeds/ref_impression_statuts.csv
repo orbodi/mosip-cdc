@@ -1,0 +1,4 @@
+prc_status,statut,libelle
+NEW,en_attente,En attente d'envoi à l'imprimeur
+OK,envoyee,Envoyée à l'imprimeur
+KO,rejetee,Rejetée

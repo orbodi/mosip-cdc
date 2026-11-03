@@ -1,0 +1,4 @@
+delivery_mode,mode,libelle
+OFFLINE,hors_ligne,Remise hors ligne
+ONLINE,en_ligne,Remise en ligne
+SUPPORT,support,Remise par le support
