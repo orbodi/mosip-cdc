@@ -11,6 +11,7 @@
   "schema.evolution": "basic",
   "collection.name.format": "regprc_rid_uin_link",
   "use.time.zone": "UTC",
+  "connection.pool.timeout": "300",
   "transforms": "unwrap,offset",
   "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
   "transforms.unwrap.delete.tombstone.handling.mode": "rewrite",

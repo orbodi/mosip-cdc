@@ -71,6 +71,7 @@ Le détail de l'enrôlement (règles, mise en service, reprise) est dans `docs/e
 ## Pas encore dans le dépôt
 
 - La configuration des connecteurs des pré-inscriptions (sur le serveur seulement :
-  `curl localhost:8083/connectors/<nom>/config`).
+  `curl localhost:8083/connectors/<nom>/config`) ; y ajouter aussi
+  `"connection.pool.timeout": "300"` (incident du 03/11/2026, `docs/enrolement.md`).
 - Les scripts SQL 01, 02 et 11 de la BD traitement : création des schémas `lake`, `ods`, `ref`, `ind` et des rôles
   `ingest_writer`, `ods_writer`, `dbt_runner`, `publisher`, `publisher_ro`, `api_reader`.

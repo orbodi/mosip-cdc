@@ -10,5 +10,6 @@
   "delete.enabled": "false",
   "schema.evolution": "basic",
   "collection.name.format": "mosip_regprc_enrichissement",
-  "use.time.zone": "UTC"
+  "use.time.zone": "UTC",
+  "connection.pool.timeout": "300"
 }

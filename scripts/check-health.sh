@@ -14,7 +14,7 @@ for c in mosip-prereg-cdc lake-prereg ods-prereg lake-enrichissement ods-enrichi
          mosip-master-cdc lake-master mosip-regprc-cdc ods-regprc-registration ods-regprc-rid-uin-link \
          ods-regprc-registration-list lake-regprc-rid-uin-link \
          mosip-regprc-impression-cdc ods-regprc-printing-orders ods-regprc-printing-shipped-cards \
-         lake-regprc-printing-orders-details; do
+         lake-regprc-printing-orders-details lake-regprc-enrichissement ods-regprc-enrichissement; do
   etat=$(curl -s --max-time 10 "http://localhost:8083/connectors/$c/status" \
     | jq -r '([.connector.state] + [.tasks[].state]) | unique | join(",")' 2>/dev/null)
   [ "$etat" = "RUNNING" ] || alerte "connecteur $c : ${etat:-injoignable}"

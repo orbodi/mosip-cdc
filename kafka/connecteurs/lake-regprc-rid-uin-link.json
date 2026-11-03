@@ -11,6 +11,7 @@
   "schema.evolution": "basic",
   "collection.name.format": "${topic}",
   "use.time.zone": "UTC",
+  "connection.pool.timeout": "300",
   "transforms": "unwrap",
   "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
   "transforms.unwrap.delete.tombstone.handling.mode": "rewrite",
