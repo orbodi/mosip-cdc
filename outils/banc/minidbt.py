@@ -69,6 +69,13 @@ def relation(nom):
     return r
 
 
+def creer_schema(nom):
+    """Comme dbt : crée le schéma seulement s'il manque (CREATE SCHEMA IF NOT EXISTS exige le droit CREATE sur la base,
+    même quand le schéma existe)."""
+    if psql(f"select exists (select 1 from pg_namespace where nspname = '{nom}')", True) != "t":
+        psql(f'create schema "{nom}";')
+
+
 def existe(nom):
     cfg = noeuds[nom]["cfg"]
     return psql(f"select to_regclass('{cfg['schema']}.{nom}') is not null", True) == "t"
@@ -120,7 +127,8 @@ for nom, cfg in sorted(seeds.items()):
     entete, donnees = lignes[0], lignes[1:]
     types = cfg.get("column_types", {})
     cols = [(c, types.get(c) or type_colonne([l[i] for l in donnees])) for i, c in enumerate(entete)]
-    psql(f'create schema if not exists "{cfg["schema"]}"; drop table if exists {relation(nom)} cascade; '
+    creer_schema(cfg["schema"])
+    psql(f'drop table if exists {relation(nom)} cascade; '
          f'create table {relation(nom)} ({", ".join(f"{c} {t}" for c, t in cols)});')
     for l in donnees:
         vals = ", ".join("null" if x == "" else "'" + x.replace("'", "''") + "'" for x in l)
@@ -136,7 +144,7 @@ for nom in ordre:
     cfg.update(cap)
     rel = relation(nom)
     schema = cfg["schema"]
-    psql(f'create schema if not exists "{schema}";')
+    creer_schema(schema)
     incr = cfg["materialized"] == "incremental" and not FULL and existe(nom)
     sql, _ = rendre(n["sql"], nom, incr)
     if incr:

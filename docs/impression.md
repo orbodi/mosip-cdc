@@ -127,12 +127,16 @@ L'ordre compte : la migration V15 avant le script de publication qui écrit ses 
 
 1. **API** (`mosip-bi-reporting`, branche `dashboard`) : `git pull`, tests, redémarrage ; Flyway applique V15 (quatre
    tables vides). Vérifier : `select version, success from flyway_schema_history where version = '15';`
-2. **Droits** (bi_owner) :
+2. **Schéma du data mart** (enterprisedb, propriétaire de la base ; dbt n'a pas le droit de créer un schéma) :
+   `psql -h 172.16.44.108 -U enterprisedb -d mosip_bi -f sql/traitement/17_prerequis_proprietaire.sql` (relançable),
+   qui crée `dm_impression`. Oublié le 03/11/2026 : premier passage en échec (« permission denied for database
+   mosip_bi »), rien publié de 09 h 29 à 09 h 35, schéma créé à la main.
+3. **Droits** (bi_owner) :
    `PGPASSWORD="$BI_OWNER_PASSWORD" psql -h 172.16.44.108 -U bi_owner -d mosip_bi -f sql/traitement/23_droits_bi_impression.sql`
    (depuis un clone à jour de `mosip-cdc` ; le script ne fait que des GRANT).
-3. **Pipeline** : `flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`. Le passage suivant construit
+4. **Pipeline** : `flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`. Le passage suivant construit
    `dwh.suivi_carte` en entier (6,2 M de commandes, premier passage plus long), puis les faits, puis publie.
-4. **Vérifier**, après le premier passage publié (en `api_reader` ou `dbt_runner`) :
+5. **Vérifier**, après le premier passage publié (en `api_reader` ou `dbt_runner`) :
    ```sql
    SELECT sum(demandes), sum(en_attente), sum(rejetees), sum(annulees) FROM bi.fait_demande_impression_jour;
    -- ≈ 6 186 000, ≈ 2 250, 8, 693
@@ -141,7 +145,7 @@ L'ordre compte : la migration V15 avant le script de publication qui écrit ses 
    SELECT source, premiere_donnee, derniere_donnee FROM bi.source_fraicheur WHERE source = 'cartes';
    ```
    et `curl -s http://localhost:8080/api/v1/cartes/impression | jq` (API du serveur).
-5. **Requête 5, vérification complète des cartes sans commande** (`dbt_runner`, à lancer à la mise en service puis de
+6. **Requête 6, vérification complète des cartes sans commande** (`dbt_runner`, à lancer à la mise en service puis de
    temps en temps ; l'alerte dbt ne regarde que les cartes récentes) :
    ```sql
    SELECT count(*) FROM ods.regprc_printing_shipped_cards c
@@ -150,3 +154,8 @@ L'ordre compte : la migration V15 avant le script de publication qui écrit ses 
 
 Retour arrière : revenir au commit précédent de `mosip-cdc` (la publication n'écrit plus les tables V15, qui restent
 en place) ; V15 est additive et n'a pas à être défaite.
+
+Mise en service faite le 03/11/2026 (09 h 24 à 09 h 40) : V15 appliquée, schéma créé, droits donnés, premier passage
+complet par le cron (6,2 M commandes), chiffres publiés : 6 195 305 demandes (2 306 en attente, 8 rejetées,
+693 annulées), 6 107 359 cartes expédiées, 4 643 568 remises, 1 463 791 à remettre (1 219 599 depuis plus de 180
+jours), délai médian du NIU à la carte 31 jours.

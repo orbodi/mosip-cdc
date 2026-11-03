@@ -24,11 +24,14 @@ for r in dbt_runner publisher publisher_ro ingest_writer ods_writer api_reader b
 done
 $P -d postgres -c "grant publisher_ro to publisher" 2>/dev/null || true
 
-# Schémas de la BD traitement (scripts 01, 02 et 11 absents du dépôt : droits supposés équivalents)
+# Schémas de la BD traitement (scripts 01, 02 et 11 absents du dépôt : droits supposés équivalents). Comme sur le
+# serveur, dbt_runner n'a pas le droit CREATE sur la base : ses schémas sont créés ici et par le script 17 (un nouveau
+# schéma dm_* oublié dans le script 17 fait échouer le banc comme le serveur, incident du 03/11/2026).
 $P -d mosip_bi -c "create schema lake authorization ingest_writer; create schema ods authorization ods_writer;
                    create schema ref authorization publisher; create schema ind authorization publisher;
                    create schema bi authorization bi_owner;
-                   grant create on database mosip_bi to dbt_runner, bi_owner;
+                   create schema dwh authorization dbt_runner; create schema dm_preinscription authorization dbt_runner;
+                   grant create on database mosip_bi to bi_owner;
                    grant usage on schema lake to dbt_runner; grant usage on schema ods to publisher, spark_reader"
 
 # Prérequis du propriétaire (pgcrypto, usage du schéma ods), comme sur le serveur
@@ -88,7 +91,7 @@ en ods_writer -f "$CDC/sql/traitement/14_ods_regprc.sql" -f "$CDC/sql/traitement
   -f "$CDC/sql/traitement/21_ods_regprc_impression.sql"
 
 # Premier passage dbt (crée dwh et dm_*), droits supposés existants sur dwh et dm_preinscription, tables ref / ind
-"$(dirname "$0")/passage.sh" --sans-publication || true
+bash "$(dirname "$0")/passage.sh" --sans-publication || true
 en dbt_runner -c "grant usage on schema dwh, dm_preinscription to publisher_ro;
                   grant select on all tables in schema dwh to publisher_ro"
 en publisher -f "$CDC/sql/traitement/03_publication.sql"

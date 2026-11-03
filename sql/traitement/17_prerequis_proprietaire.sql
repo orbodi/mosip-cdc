@@ -1,5 +1,6 @@
--- Prérequis de l'enrôlement sur mosip_bi, réservés au propriétaire de la base et des schémas lake et ods
--- (enterprisedb, relevé du 25/10/2026). À exécuter une fois, AVANT 14_ods_regprc.sql et 15_lake_regprc.sql :
+-- Prérequis de l'enrôlement et de l'impression sur mosip_bi, réservés au propriétaire de la base et des schémas lake et
+-- ods (enterprisedb, relevé du 25/10/2026). À exécuter une fois, AVANT 14_ods_regprc.sql et 15_lake_regprc.sql (relancé
+-- pour chaque nouveau schéma dm_*) :
 --   psql -h 172.16.44.108 -U enterprisedb -d mosip_bi -f sql/traitement/17_prerequis_proprietaire.sql
 \set ON_ERROR_STOP on
 
@@ -13,6 +14,10 @@ GRANT USAGE ON SCHEMA ods TO dbt_runner, publisher;
 -- 3. Schéma du data mart de l'enrôlement, propriété de dbt_runner : dbt n'a pas le droit CREATE sur la base et ne
 --    peut pas le créer lui-même (incident du 25/10/2026 : « permission denied for database mosip_bi », plus rien publié).
 CREATE SCHEMA IF NOT EXISTS dm_enrolement AUTHORIZATION dbt_runner;
+-- Lot 8b (impression des cartes, 03/11/2026) : même règle pour dm_impression. Oubli au premier passage : « permission
+-- denied for database mosip_bi », plus rien publié de 09 h 29 à 09 h 35 (créé à la main par enterprisedb). Le script
+-- est relançable (IF NOT EXISTS) : tout nouveau schéma dm_* s'ajoute ici, et se crée AVANT le git pull qui l'utilise.
+CREATE SCHEMA IF NOT EXISTS dm_impression AUTHORIZATION dbt_runner;
 
 -- 4. Contrôles : les connecteurs créent ou modifient leurs tables (schema.evolution) dans leur schéma
 SELECT extname, extversion FROM pg_extension WHERE extname = 'pgcrypto';

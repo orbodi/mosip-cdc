@@ -17,7 +17,9 @@ Lire d'abord `../outfit.md` (état du travail et décisions) et `README.md` (arc
      Table très modifiée (ex. `regprc.registration`, 610 000 mises à jour par jour) : plutôt l'ODS en upsert
      (`primary.key.mode=record_key`, offset ajouté par `InsertField$Value` en `__kafka_offset`), topic compacté ;
   4. dbt : `dwh/<domaine>/stg_*` incrémental par `__connect_offset` (lake) ou `__kafka_offset` (ODS), faits
-     `dm_<domaine>/*` en tables, droits par `+grants` et usage du schéma par `+post-hook` ;
+     `dm_<domaine>/*` en tables, droits par `+grants` et usage du schéma par `+post-hook` ; dbt n'a pas le droit de
+     créer un schéma : un nouveau schéma `dm_<domaine>` s'ajoute à `sql/traitement/17_prerequis_proprietaire.sql`
+     (enterprisedb) et se crée avant le `git pull` qui l'utilise (incidents du 25/10 et du 03/11/2026) ;
   5. publication dans `scripts/publier-indicateurs.sh`, dans la transaction existante : table temporaire `n_<table>`
      (`LIKE bi.<table> INCLUDING DEFAULTS` : une colonne ajoutée par migration garde son défaut tant que le script ne
      l'écrit pas ; incident du 02/11/2026), puis `pg_temp.synchroniser` qui n'écrit que les lignes qui changent
