@@ -42,7 +42,7 @@ $P -d mosip_bi -f "$CDC/sql/traitement/17_prerequis_proprietaire.sql" >/dev/null
 while read -r v; do en bi_owner -f "$v"; done < <(ls "$REPORTING"/backend/src/main/resources/db/migration/V*.sql | sort -V)
 en bi_owner -f "$CDC/sql/traitement/09_droits_bi.sql" -f "$CDC/sql/traitement/12_droits_bi_zone.sql" \
   -f "$CDC/sql/traitement/13_droits_bi_profil_preinscriptions.sql" -f "$CDC/sql/traitement/16_droits_bi_enrolement.sql" \
-  -f "$CDC/sql/traitement/23_droits_bi_impression.sql"
+  -f "$CDC/sql/traitement/23_droits_bi_impression.sql" -f "$CDC/sql/traitement/24_droits_bi_impression_8d.sql"
 
 # Lake existant (créé par les connecteurs sur le serveur) et référentiel de test
 en ingest_writer <<'SQL'

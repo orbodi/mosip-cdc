@@ -159,3 +159,19 @@ Mise en service faite le 03/11/2026 (09 h 24 à 09 h 40) : V15 appliquée, sché
 complet par le cron (6,2 M commandes), chiffres publiés : 6 195 305 demandes (2 306 en attente, 8 rejetées,
 693 annulées), 6 107 359 cartes expédiées, 4 643 568 remises, 1 463 791 à remettre (1 219 599 depuis plus de 180
 jours), délai médian du NIU à la carte 31 jours.
+
+## Lot 8d : erreurs d'envoi à l'IDPS et NIU sans commande (03/11/2026)
+
+- `dwh.erreur_idps_commande` : une ligne par commande qui a eu au moins un événement `PRINT-REQUEST-ERR` (lake,
+  reconstruite à chaque passage) ; `fait_demande_impression_jour.erreurs_idps` la compte au jour de réception de la
+  commande, parmi les demandes (`dwh.suivi_carte` n'est pas modifié : pas de `--full-refresh`).
+- `dm_impression.stock_niu_sans_commande` : NIU de première inscription (lien de type NEW) sans commande, par centre et
+  ancienneté (moins ou plus de 7 jours), à l'heure du passage ; publié dans `bi.stock_niu_sans_commande`.
+
+Mise en service, dans cet ordre (comme V15) :
+1. API (`mosip-bi-reporting`, `dashboard`) : `git pull`, tests, redémarrage ; Flyway applique V16.
+2. Droits (bi_owner) : `sql/traitement/24_droits_bi_impression_8d.sql` (une ligne GRANT, donnée aussi dans la
+   conversation de mise en service).
+3. Pipeline : `flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`, puis un passage.
+4. Vérifier : `SELECT sum(erreurs_idps) FROM bi.fait_demande_impression_jour;` (≈ 172 354) et
+   `SELECT anciennete, sum(niu) FROM bi.stock_niu_sans_commande GROUP BY 1;` (≈ 55 au total au relevé).

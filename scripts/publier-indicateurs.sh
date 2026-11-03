@@ -168,13 +168,13 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2;
 SELECT pg_temp.synchroniser('bi.stock_synchro_non_recue', 'n_stock_synchro_non_recue', ARRAY['centre_id', 'anciennete']);
--- Impression des cartes (migration V15 du backend, lot 8) : commandes, cartes, délais et annulations, même résolution
+-- Impression des cartes (migrations V15 et V16 du backend, lots 8b et 8d) : commandes, cartes, délais et annulations, même résolution
 -- des centres que l'enrôlement (centre du RID, « Centre non référencé » sinon).
 CREATE TEMP TABLE n_fait_demande_impression_jour (LIKE bi.fait_demande_impression_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_demande_impression_jour (jour, centre_id, demandes, envoyees, en_attente, rejetees, non_classees,
-                                             annulees)
+                                             annulees, erreurs_idps)
 SELECT f.jour, coalesce(z.id, h.id), sum(f.demandes), sum(f.envoyees), sum(f.en_attente), sum(f.rejetees),
-       sum(f.non_classees), sum(f.annulees)
+       sum(f.non_classees), sum(f.annulees), sum(f.erreurs_idps)
 FROM dm_impression.fait_demande_impression_jour f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
@@ -206,6 +206,15 @@ CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
 GROUP BY 1, 2, 3;
 SELECT pg_temp.synchroniser('bi.fait_annulation_impression_jour', 'n_fait_annulation_impression_jour', ARRAY['jour', 'centre_id', 'motif']);
+-- Lot 8d (migration V16) : NIU de première inscription sans commande d'impression, stock à l'heure du passage.
+CREATE TEMP TABLE n_stock_niu_sans_commande (LIKE bi.stock_niu_sans_commande INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_stock_niu_sans_commande (centre_id, anciennete, niu, plus_ancien_le, calcule_le)
+SELECT coalesce(z.id, h.id), f.anciennete, sum(f.niu), min(f.plus_ancien_le), max(f.calcule_le)
+FROM dm_impression.stock_niu_sans_commande f
+CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
+LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
+GROUP BY 1, 2;
+SELECT pg_temp.synchroniser('bi.stock_niu_sans_commande', 'n_stock_niu_sans_commande', ARRAY['centre_id', 'anciennete']);
 INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
 SELECT 'cartes', 'Impression des cartes', 2, premiere_donnee, derniere_donnee, now()
 FROM dm_impression.fraicheur_impression

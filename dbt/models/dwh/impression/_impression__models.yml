@@ -14,6 +14,14 @@ models:
   - name: stg_regprc__printing_annulations
     description: "Annulations des commandes (événements NEW-PRINT-CANCELED du lake) : une ligne par événement."
 
+  - name: stg_regprc__printing_erreurs_idps
+    description: "Erreurs d'envoi à l'IDPS (événements PRINT-REQUEST-ERR du lake) : une ligne par événement."
+
+  - name: erreur_idps_commande
+    description: >
+      Commandes qui ont eu au moins une erreur d'envoi à l'IDPS (lot 8d) : une ligne par request_id (index unique),
+      première et dernière erreur, nombre d'erreurs.
+
   - name: suivi_carte
     description: >
       Table pivot de l'impression : une ligne par commande, première date de chaque jalon (commande, envoi,

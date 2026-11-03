@@ -42,5 +42,14 @@ models:
         data_tests:
           - not_null
 
+  - name: stock_niu_sans_commande
+    description: "Contrat bi.stock_niu_sans_commande : NIU de première inscription sans commande d'impression (I-SANS)."
+    columns:
+      - name: anciennete
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['moins_7j', 'plus_7j']
+
   - name: fraicheur_impression
     description: "Bornes des données d'impression (bi.source_fraicheur, source cartes)."
