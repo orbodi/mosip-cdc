@@ -1,0 +1,56 @@
+code,ordre,nom_mosip
+R5,1,Savanes
+R2,2,Kara
+R1,3,Centrale
+R4,4,Plateaux
+R3,5,Maritime
+R6,6,Grand Lomé
+P33,1,Cinkasse
+P39,2,Tone
+P34,3,Kpendjal
+P35,4,Kpendjal Ouest
+P44,4,Kpendjal-Ouest
+P38,5,Tandjoare
+P36,6,Oti
+P37,7,Oti Sud
+P11,1,Keran
+P10,2,Doufelgou
+P9,3,Dankpen
+P8,4,Binah
+P12,5,Kozah
+P6,6,Assoli
+P7,7,Bassar
+P49,8,Kara
+P5,1,Tchaoudjo
+P47,1,Tchaoudjo
+P4,2,Tchamba
+P2,3,Mo
+P3,4,Sotouboua
+P48,4,Sotouboua
+P1,5,Blitta
+P46,6,
+P26,1,Est-Mono
+P42,1,Est Mono
+P22,2,Akebou
+P24,3,Anie
+P23,4,Amou
+P32,5,Wawa
+P31,6,Ogou
+P25,7,Danyi
+P30,8,Moyen-Mono
+P43,8,Moyen Mono
+P29,9,Kpele
+P40,9,Kpele
+P27,10,Haho
+P28,11,Kloto
+P21,12,Agou
+P19,1,Yoto
+P20,2,Zio
+P15,3,Bas-Mono
+P45,3,Bas Mono
+P14,4,Ave
+P18,5,Vo
+P17,6,Lacs
+P13,1,Agoe-Nyive
+P41,1,Agoe Nyive
+P16,2,Golfe

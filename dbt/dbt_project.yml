@@ -69,6 +69,8 @@ seeds:
     +schema: dwh
     ref_zone_corrections:
       +column_types: {code: text, parent_code: text, masquer: boolean, motif: text}
+    ref_zone_ordre:
+      +column_types: {code: text, ordre: integer, nom_mosip: text}
     ref_regprc_statuts:
       +column_types: {status_code: text, libelle: text, devenir_sans_niu: text}
     ref_regprc_etapes:

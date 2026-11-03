@@ -72,3 +72,15 @@ seeds:
         data_tests:
           - unique
           - not_null
+
+  # Ordre du nord au sud des régions et des préfectures (rang parmi les zones de même parent), calculé le 03/11/2026
+  # sur les contours de la carte (frontend/src/composants/carte/contoursTogo.ts) ; nom_mosip : rappel lisible du nom.
+  - name: ref_zone_ordre
+    columns:
+      - name: code
+        data_tests:
+          - unique
+          - not_null
+      - name: ordre
+        data_tests:
+          - not_null

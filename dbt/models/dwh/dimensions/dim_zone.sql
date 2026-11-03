@@ -8,6 +8,12 @@
     les lieux, tel quel pour les centres (sigles EPP, EPC…).
   - seeds/ref_zone_corrections.csv : erreurs connues de MOSIP, en attendant leur correction à la source
     (parent corrigé, ou zone masquée). Les zones rattachées à une zone masquée passent sous HORS_REFERENTIEL.
+  - ordre : rang du nord au sud parmi les zones de même parent (régions, préfectures), de seeds/ref_zone_ordre.csv,
+    calculé le 03/11/2026 sur les contours de la carte du tableau de bord (centre de chaque contour ; doublons MOSIP
+    au même rang que leur jumeau). L'API trie les sous-zones par ordre puis par nom : sans ordre (0 jusqu'au
+    03/11/2026), les listes « du nord au sud » étaient alphabétiques. Une région ou une préfecture absente du seed
+    passe en fin de liste (999) et lève une alerte (assert_zone_ordre_manquant) ; les niveaux plus fins restent à 0,
+    triés par nom.
 -#}
 {{ config(indexes=[{'columns': ['code'], 'unique': True}]) }}
 
@@ -44,10 +50,13 @@ select
         when p.code is not null and not coalesce(pc.masquer, false) then p.code
         else 'HORS_REFERENTIEL'
     end                                             as parent_code,
-    0                                               as ordre
+    coalesce(o.ordre,
+             case when z.niveau in ('region', 'prefecture') then 999 else 0 end)
+                                                    as ordre
 from zones z
 left join lieux p on p.code = z.parent_loc_code
 left join {{ ref('ref_zone_libelles') }} l on l.code = z.code
 left join {{ ref('ref_zone_corrections') }} c on c.code = z.code
 left join {{ ref('ref_zone_corrections') }} pc on pc.code = p.code
+left join {{ ref('ref_zone_ordre') }} o on o.code = z.code
 where not coalesce(c.masquer, false)
