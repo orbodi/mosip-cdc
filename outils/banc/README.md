@@ -50,6 +50,13 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
   « En reprocessing » (02/11/2026) : `bi.stock_en_cours_motif` en compte 1, sur la ligne Génération du NIU, motif
   « Motif non répertorié » (AUTRE), comme `bi.fait_enrolement_jour` (test `assert_enrolement_motifs_egal_devenir`).
   Depuis le 02/11/2026, 6 alertes et non 7 : l'alerte `entry_date` modifiée ne regarde que les jours récents.
+- **Authentifications** (lot 9b, 04/11/2026) : 13 transactions au snapshot (A13 supprimée, comptée nulle part).
+  `bi.fait_authentification_jour` : usagers 5 = 3 réussies + 2 échouées (OTP refusé, aucun mode demandé) ; paquets
+  4 = 1 réussie + 3 échouées (non concordante, biométrie absente, NIU absent) ; 1 non classé (appelant interne
+  inconnu, motif AUTRE). Demandes de code OTP d'Atos : 2 dont 1 refusée ; codes OTP : 3 dont 1 utilisé. Trois alertes
+  au premier passage (appelant, modalité PIN-AUTH, message inconnus), aucune au second (dernier passage seulement) ;
+  le flux ajoute A14 (Atos, réussie) et A15 (paquets, non concordante), O3 passe à utilisé. `--full-refresh` redonne
+  les mêmes tables.
 - **Impression des cartes** (lot 8b, 03/11/2026) : 7 commandes dans `dwh.suivi_carte` ; le deuxième passage en
   recalcule 5 (C1 par le lien RID → NIU modifié, C2 par sa remise, C3 par son annulation, C6 et C7 par leur
   commande). `bi.fait_demande_impression_jour` : 7 demandes = 4 envoyées + 2 en attente (C3, C7) + 1 rejetée (C4),

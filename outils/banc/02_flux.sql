@@ -81,3 +81,19 @@ insert into lake.mosip_regprc_printing_orders_details
   cr_dtimes, __deleted, __op, __lsn, __source_ts_ms) values
  ('mosip.regprc.printing_orders_details',0,2,103,'Q2','CARD-DELIVERED',null,null,'2026-10-26 15:00','false','c',400,1792890000000),
  ('mosip.regprc.printing_orders_details',0,3,104,'Q3','NEW-PRINT-CANCELED','CANCEL_AUTRE','TERMINATED','2026-10-27 09:00','false','c',401,1792890000000);
+
+-- Authentifications (lot 9) : flux après le snapshot.
+--  A14      Atos, nouvelle authentification eKYC réussie le 27/10 ; A15 traitement des paquets, iris non concordant
+--  O3       code utilisé (mis à jour sur place, nouvel offset) ; O4 nouveau code actif
+insert into ods.ida_auth_transaction
+ (id, cr_dtimes, auth_type_code, status_code, status_comment, requested_entity_type, requested_entity_id,
+  requested_entity_name, is_deleted, __deleted, __op, __source_ts_ms, __kafka_offset) values
+ ('A14','2026-10-27 09:00','KYC-AUTH,OTP-AUTH,KYC-AUTH','Y',null,'PARTNER','AU-ANID','Atos',false,'false','c',1792890000000,13),
+ ('A15','2026-10-27 10:00','IRIS-AUTH','N','Iris  Authentication Failed','INTERNAL','mosip-regproc-client','mosip-regproc-client',false,'false','c',1792890000000,14);
+
+insert into ods.ida_otp_transaction
+ (id, status_code, cr_dtimes, expiry_dtimes, is_deleted, __deleted, __op, __source_ts_ms, __kafka_offset) values
+ ('O3','used','2026-10-06 12:00','2026-10-06 12:03',false,'false','u',1792890000000,3),
+ ('O4','active','2026-10-27 08:59','2026-10-27 09:02',false,'false','c',1792890000000,4)
+on conflict (id) do update set status_code = excluded.status_code, __op = excluded.__op,
+  __source_ts_ms = excluded.__source_ts_ms, __kafka_offset = excluded.__kafka_offset;

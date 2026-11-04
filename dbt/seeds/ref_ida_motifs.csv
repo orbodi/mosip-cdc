@@ -1,0 +1,8 @@
+motif,libelle,message,regle,priorite
+BIO_ABSENTE,Biométrie absente du dossier d'authentification,IDA-BIA-006 Biometric data … not available in database,Biometric data .* not available in database,10
+NIU_ABSENT,NIU absent de la base d'authentification,IDA-MLC-018 UIN not available in database,UIN not available in database,20
+MODALITE_VERROUILLEE,Modalité verrouillée par le résident,IDA-MLC-019 … Auth Type is Locked for the UIN,Auth Type is Locked,30
+IDENTIFIANT_NON_CONFIGURE,Type d'identifiant non configuré,IDA-MLC-015 Identity Type - … not configured for the country,not configured for the country,40
+SANS_MODE,Aucun mode d'authentification demandé,IDA-MLC-008 No authentication type selected,No authentication type selected,50
+OTP_REFUSE,Code OTP ou eKYC refusé,OTP Authentication Failed ; KYC Authentication Request;OTP Authentication;… Failed,(OTP|KYC)[^;]*Authentication.*Failed,60
+BIO_NON_CONCORDANTE,Biométrie non concordante,Finger / Iris / Face Authentication … Failed (seules ou combinées),(Finger|Iris|Face)\s+Authentication.*Failed,70

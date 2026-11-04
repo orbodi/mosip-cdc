@@ -18,6 +18,8 @@ CREATE SCHEMA IF NOT EXISTS dm_enrolement AUTHORIZATION dbt_runner;
 -- denied for database mosip_bi », plus rien publié de 09 h 29 à 09 h 35 (créé à la main par enterprisedb). Le script
 -- est relançable (IF NOT EXISTS) : tout nouveau schéma dm_* s'ajoute ici, et se crée AVANT le git pull qui l'utilise.
 CREATE SCHEMA IF NOT EXISTS dm_impression AUTHORIZATION dbt_runner;
+-- Lot 9b (authentifications, 04/11/2026).
+CREATE SCHEMA IF NOT EXISTS dm_authentification AUTHORIZATION dbt_runner;
 
 -- 4. Contrôles : les connecteurs créent ou modifient leurs tables (schema.evolution) dans leur schéma
 SELECT extname, extversion FROM pg_extension WHERE extname = 'pgcrypto';

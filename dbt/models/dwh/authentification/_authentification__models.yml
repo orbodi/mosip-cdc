@@ -1,0 +1,11 @@
+version: 2
+
+# Pas de test unique sur transaction_id (index unique du modèle) ni de test qui relit toute la table à chaque passage :
+# les alertes de dbt/tests/assert_authentification_* ne regardent que les lignes du dernier passage (maj_le).
+models:
+  - name: stg_ida__auth_transaction
+    description: "Authentifications (ida.auth_transaction) dans l'ODS, sans ref_id, jetons ni signatures."
+  - name: stg_ida__otp_transaction
+    description: "Codes OTP demandés (ida.otp_transaction) dans l'ODS, sans ref_id ni otp_hash."
+  - name: authentification
+    description: "Une ligne par authentification, classée : périmètre, canal, appelant, type, statut, motif."

@@ -62,3 +62,16 @@ sources:
         description: >
           État courant de regprc.printing_shipped_cards (connecteur ods-regprc-printing-shipped-cards, lot 8) : une
           ligne par carte expédiée, avec sa remise. Jamais les numéros de carte et de colis ni l'agent.
+      - name: ida_auth_transaction
+        description: >
+          État courant de ida.auth_transaction (connecteur ods-ida-auth-transaction, lot 9) : une ligne par
+          authentification. Jamais ref_id, token_id, static_tkn_id ni les signatures ; status_comment (message fixe
+          d'IDA) ne sort pas du data warehouse.
+        loaded_at_field: "to_timestamp(__source_ts_ms / 1000.0)"
+        freshness:
+          warn_after: {count: 6, period: hour}
+          error_after: {count: 48, period: hour}
+      - name: ida_otp_transaction
+        description: >
+          État courant de ida.otp_transaction (connecteur ods-ida-otp-transaction, lot 9) : un code OTP demandé par
+          ligne. Jamais ref_id ni otp_hash.

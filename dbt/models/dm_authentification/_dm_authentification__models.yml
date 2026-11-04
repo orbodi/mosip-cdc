@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: fait_authentification_jour
+    description: "Contrat bi.fait_authentification_jour : authentifications par jour, appelant, type, statut et motif."
+    columns:
+      - name: perimetre
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['usagers', 'paquets', 'non_classe']
+      - name: type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['biometrique', 'otp', 'demographique', 'combinee', 'sans_mode', 'non_classe']
+
+  - name: fait_demande_otp_jour
+    description: "Contrat bi.fait_demande_otp_jour : demandes de code OTP par jour et appelant."
+
+  - name: fait_code_otp_jour
+    description: "Contrat bi.fait_code_otp_jour : codes OTP par jour de demande, dont utilisés."
+
+  - name: ref_motif_authentification
+    description: "Contrat bi.ref_motif_authentification : libellés des motifs d'échec."
+
+  - name: fraicheur_authentification
+    description: "Bornes des données d'authentification (bi.source_fraicheur, source authentifications)."

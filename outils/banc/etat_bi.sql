@@ -31,3 +31,15 @@ select (select sum(demandes) from bi.fait_demande_impression_jour) as demandes,
        (select sum(expediees) from bi.fait_carte_jour) as expediees,
        (select sum(remises + a_remettre) from bi.fait_carte_jour) as remises_et_a_remettre,
        (select sum(cartes) from bi.fait_delai_carte_jour) as avec_delai;
+\echo --- Authentifications (lot 9, V17) : par jour, appelant, type, statut et motif
+select jour, perimetre, canal, appelant_id, appelant, type, statut, motif, authentifications
+from bi.fait_authentification_jour order by 1, 4, 6, 7, 8;
+select jour, appelant, demandes, refusees from bi.fait_demande_otp_jour order by 1, 2;
+select jour, codes, utilises from bi.fait_code_otp_jour order by 1;
+select motif, libelle, ordre from bi.ref_motif_authentification order by ordre;
+\echo --- contrôles des authentifications : usagers, paquets ; échouées = somme des motifs
+select perimetre, sum(authentifications) as authentifications,
+       sum(authentifications) filter (where statut = 'reussie') as reussies,
+       sum(authentifications) filter (where statut = 'echouee') as echouees,
+       sum(authentifications) filter (where motif <> 'AUCUN') as par_motif
+from bi.fait_authentification_jour group by 1 order by 1;

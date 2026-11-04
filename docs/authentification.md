@@ -1,8 +1,8 @@
 # Authentifications : chaîne de données et mise en service
 
 Relevé et décisions : `docs/releve-authentification.md` (03 et 04/11/2026). Indicateurs : section « Authentifications »
-de `docs/indicateurs.md` (`mosip-bi-reporting`, branche `main`). Ce document couvre le lot 9a (capture) ; les calculs,
-le contrat `bi` et l'API viendront au lot 9b, la page au lot 9c.
+de `docs/indicateurs.md` (`mosip-bi-reporting`, branche `main`). Ce document couvre le lot 9a (capture) et le lot 9b
+(calculs, contrat `bi`, API) ; la page viendra au lot 9c.
 
 ```
 mosip_ida                  Kafka (1 partition par topic)               BD traitement mosip_bi
@@ -77,3 +77,61 @@ le lot 9b.
   battement de cœur à prévoir. Slot non borné (EDB 12) : retard surveillé par `scripts/check-health.sh`.
 - **Snapshot** : le parcours des 12 Go de `auth_transaction` (signatures comprises, même si elles ne sont pas lues
   par le connecteur) pèse sur la base MOSIP : créneau creux.
+
+## Lot 9b : calculs, contrat `bi` et API (04/11/2026)
+
+```
+ods.ida_auth_transaction → stg_ida__auth_transaction → dwh.authentification (incrémental, une ligne classée par transaction)
+                                                        ├→ dm_authentification.fait_authentification_jour → bi.fait_authentification_jour
+                                                        └→ dm_authentification.fait_demande_otp_jour     → bi.fait_demande_otp_jour
+ods.ida_otp_transaction  → stg_ida__otp_transaction  → dm_authentification.fait_code_otp_jour        → bi.fait_code_otp_jour
+seeds/ref_ida_motifs.csv                             → dm_authentification.ref_motif_authentification → bi.ref_motif_authentification
+```
+
+**Règles de calcul** (`dwh/authentification/authentification.sql`), au jour d'enregistrement (`cr_dtimes`, UTC) :
+
+| Règle | Seed | Inconnu |
+|---|---|---|
+| Périmètre et canal par l'appelant : `mosip-regproc-client` → paquets ; `mosip-resident-client` → usagers, portail du résident ; `ussd-client` → usagers, USSD ; tout appelant `PARTNER` → usagers, partenaire, sous son nom MOSIP (sans changer le seed) | `ref_ida_appelants.csv` | appelant `INTERNAL` → `non_classe`, alerte `assert_authentification_appelants_inconnus` |
+| Type par la liste `auth_type_code` : `biometrique` (empreinte, iris, visage, même plusieurs), `otp` (eKYC par code compris), `demographique`, `combinee` (plusieurs familles), `sans_mode` (`KYC-AUTH` seul) ; `OTP-REQUEST` = demande de code, comptée à part | `ref_ida_modalites.csv` | code inconnu → type `non_classe`, alerte `assert_authentification_modalites_inconnues` |
+| Statut : Y → réussie, N → échouée | — | autre → `non_classe` |
+| Motif d'une échouée : expressions régulières sur le message d'IDA, sans distinction de casse, la plus petite priorité gagne ; `AUCUN` pour une réussie | `ref_ida_motifs.csv` | `AUTRE` (« Motif non répertorié »), alerte `assert_authentification_motifs_inconnus` (message chiffres masqués) |
+
+Usagers et traitement des paquets sont dans les mêmes tables, distingués par `perimetre`, et ne s'additionnent jamais
+(l'API les lit séparément). Le message d'IDA (`status_comment`) ne sort pas de `dwh` : seul le code du motif est publié.
+Un seed modifié ne reclasse que les nouvelles transactions : `dbt build --full-refresh --select authentification+`
+(premier passage et reclassement : 3,25 M de lignes, quelques minutes).
+
+**Contrôles** : `assert_authentification_statuts_motifs` (bloquant : une échouée a un motif, une réussie n'en a pas ;
+refusées ≤ demandes de code ; codes utilisés ≤ codes), mêmes règles en contraintes dans `bi` (V17). Les trois alertes
+ne regardent que le dernier passage.
+
+**API** (`mosip-bi-reporting`, branche `dashboard`, `/api/v1/authentifications/…`) : `usagers`, `types`,
+`causes?perimetre=usagers|paquets`, `partenaires` (sans code MOSIP), `semaines`, `paquets`. Filtre Période (`du`,
+`au`), pas de zone.
+
+### Mise en service du lot 9b
+
+L'ordre compte (V15 et V16 : incidents du 02 et du 03/11/2026).
+
+1. **API** (`mosip-bi-reporting`, `dashboard`) : `git pull`, tests, redémarrage ; Flyway applique V17 (quatre tables
+   vides). Vérifier : `select version, success from bi.flyway_schema_history where version = '17';`
+2. **Droits** (bi_owner) : `sql/traitement/26_droits_bi_authentification.sql`.
+3. **Schéma du data mart** (enterprisedb) : `sql/traitement/17_prerequis_proprietaire.sql` (relançable), qui crée
+   `dm_authentification`. **Avant** le pull du pipeline.
+4. **Pipeline** : `flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`, puis un passage
+   (`scripts/run-analytique.sh`) : premier classement des 3,25 M de transactions.
+5. **Vérifier** (en `api_reader`) :
+   ```sql
+   SELECT perimetre, sum(authentifications), sum(authentifications) FILTER (WHERE statut = 'reussie')
+   FROM bi.fait_authentification_jour WHERE jour >= current_date - 30 GROUP BY 1;
+   -- relevé du 03/11/2026 (30 jours) : paquets ≈ 172 600 dont ≈ 25 000 réussies ; usagers ≈ 2 200 dont ≈ 1 500
+   SELECT motif, sum(authentifications) FROM bi.fait_authentification_jour
+   WHERE perimetre = 'paquets' AND statut = 'echouee' GROUP BY 1 ORDER BY 2 DESC;
+   SELECT sum(codes), sum(utilises) FROM bi.fait_code_otp_jour;            -- ≈ 83 900, ≈ 50 800
+   SELECT source, premiere_donnee, derniere_donnee FROM bi.source_fraicheur WHERE source = 'authentifications';
+   ```
+   et `curl -s http://localhost:8080/api/v1/authentifications/usagers | jq`.
+
+Retour arrière : revenir au commit précédent de `mosip-cdc` (la publication n'écrit plus les tables V17, qui restent en
+place) ; V17 est additive et n'a pas à être défaite.

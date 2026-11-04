@@ -101,3 +101,37 @@ insert into lake.mosip_regprc_printing_orders_details
   cr_dtimes, __deleted, __op, __lsn, __source_ts_ms) values
  ('mosip.regprc.printing_orders_details',0,0,101,'Q1','PRINT-REQUEST-ERR','CORE-PRINTING-IDPS-1',null,'2026-10-02 12:00','false','r',300,1792900000000),
  ('mosip.regprc.printing_orders_details',0,1,102,'Q5','NEW-PRINT-CANCELED','CANCEL_PHOTO','TERMINATED','2026-10-06 09:00','false','r',300,1792900000000);
+
+-- Authentifications (lot 9) : snapshot de ida.auth_transaction et ida.otp_transaction (mosip-ida-cdc).
+--  A1, A2   traitement des paquets, empreinte réussie, puis échouée (non concordante)
+--  A3       traitement des paquets, iris : biométrie absente du dossier (IDA-BIA-006)
+--  A4       traitement des paquets, trois modalités : NIU absent de la base (IDA-MLC-018)
+--  A5, A6   Atos (partenaire, pas dans le seed), eKYC par OTP réussi, puis refusé
+--  A7       Atos, eKYC sans modalité : aucun mode demandé (IDA-MLC-008)
+--  A8, A9   Atos, demandes de code OTP : envoyée, puis refusée (USERID non configuré)
+--  A10      portail du résident, OTP réussi
+--  A11      USSD, code de modalité inconnu (PIN-AUTH : alerte assert_authentification_modalites_inconnues)
+--  A12      appelant interne inconnu (alerte assert_authentification_appelants_inconnus), message inconnu (alerte)
+--  A13      supprimé (is_deleted) : compté nulle part
+insert into ods.ida_auth_transaction
+ (id, cr_dtimes, auth_type_code, status_code, status_comment, requested_entity_type, requested_entity_id,
+  requested_entity_name, is_deleted, __deleted, __op, __source_ts_ms, __kafka_offset) values
+ ('A1','2026-10-05 08:00','FINGERPRINT-AUTH','Y',null,'INTERNAL','mosip-regproc-client','mosip-regproc-client',false,'false','r',1792900000000,0),
+ ('A2','2026-10-05 09:00','FINGERPRINT-AUTH','N','Finger Authentication Failed','INTERNAL','mosip-regproc-client','mosip-regproc-client',false,'false','r',1792900000000,1),
+ ('A3','2026-10-05 10:00','IRIS-AUTH','N','[{"errorCode":"IDA-BIA-006","errorMessage":"Biometric data Iris not available in database"}]','INTERNAL','mosip-regproc-client','mosip-regproc-client',false,'false','r',1792900000000,2),
+ ('A4','2026-10-06 10:00','FINGERPRINT-AUTH,IRIS-AUTH,FACE-AUTH','N','[{"errorCode":"IDA-MLC-018","errorMessage":"UIN not available in database"}]','INTERNAL','mosip-regproc-client','mosip-regproc-client',false,'false','r',1792900000000,3),
+ ('A5','2026-10-05 11:00','KYC-AUTH,OTP-AUTH,KYC-AUTH','Y',null,'PARTNER','AU-ANID','Atos',false,'false','r',1792900000000,4),
+ ('A6','2026-10-05 11:05','KYC-AUTH,OTP-AUTH,KYC-AUTH','N','KYC Authentication Request;OTP Authentication;KYC Authentication Request Failed','PARTNER','AU-ANID','Atos',false,'false','r',1792900000000,5),
+ ('A7','2026-10-06 11:10','KYC-AUTH','N','[{"errorCode":"IDA-MLC-008","errorMessage":"No authentication type selected"}]','PARTNER','AU-ANID','Atos',false,'false','r',1792900000000,6),
+ ('A8','2026-10-05 10:59','OTP-REQUEST','Y',null,'PARTNER','AU-ANID','Atos',false,'false','r',1792900000000,7),
+ ('A9','2026-10-06 11:00','OTP-REQUEST','N','[{"errorCode":"IDA-MLC-015","errorMessage":"Identity Type - USERID not configured for the country"}]','PARTNER','AU-ANID','Atos',false,'false','r',1792900000000,8),
+ ('A10','2026-10-06 12:00','OTP-AUTH','Y',null,'INTERNAL','mosip-resident-client','mosip-resident-client',false,'false','r',1792900000000,9),
+ ('A11','2026-10-06 13:00','PIN-AUTH','Y',null,'INTERNAL','ussd-client','ussd-client',false,'false','r',1792900000000,10),
+ ('A12','2026-10-06 14:00','OTP-AUTH','N','Nouveau message 123','INTERNAL','autre-client','autre-client',false,'false','r',1792900000000,11),
+ ('A13','2026-10-06 15:00','OTP-AUTH','Y',null,'PARTNER','AU-ANID','Atos',true,'false','r',1792900000000,12);
+
+insert into ods.ida_otp_transaction
+ (id, status_code, cr_dtimes, expiry_dtimes, is_deleted, __deleted, __op, __source_ts_ms, __kafka_offset) values
+ ('O1','used','2026-10-05 10:59','2026-10-05 11:02',false,'false','r',1792900000000,0),
+ ('O2','active','2026-10-05 12:00','2026-10-05 12:03',false,'false','r',1792900000000,1),
+ ('O3','active','2026-10-06 12:00','2026-10-06 12:03',false,'false','r',1792900000000,2);

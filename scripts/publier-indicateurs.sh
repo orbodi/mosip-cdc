@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publie les indicateurs calculés par dbt : contrat bi du tableau de bord (mosip-bi-reporting : référentiel,
-# pré-inscriptions, enrôlement, impression des cartes), puis ref et ind.
+# pré-inscriptions, enrôlement, impression des cartes, authentifications), puis ref et ind.
 # Tout est remplacé dans une seule transaction : l'API lit l'ancienne version jusqu'au COMMIT,
 # sans jamais voir une table vide ni être bloquée.
 # Tables bi des faits (30/10/2026) : la nouvelle version est calculée dans une table temporaire (non journalisée), puis
@@ -218,6 +218,34 @@ SELECT pg_temp.synchroniser('bi.stock_niu_sans_commande', 'n_stock_niu_sans_comm
 INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
 SELECT 'cartes', 'Impression des cartes', 2, premiere_donnee, derniere_donnee, now()
 FROM dm_impression.fraicheur_impression
+WHERE derniere_donnee IS NOT NULL
+ON CONFLICT (source) DO UPDATE
+   SET premiere_donnee    = excluded.premiere_donnee,
+       derniere_donnee    = excluded.derniere_donnee,
+       dernier_chargement = excluded.dernier_chargement;
+-- Authentifications (migration V17 du backend, lot 9b) : pas de territoire, aucune résolution de zone. Usagers et
+-- traitement des paquets dans les mêmes tables, distingués par perimetre (jamais additionnés par l'API).
+CREATE TEMP TABLE n_fait_authentification_jour (LIKE bi.fait_authentification_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_authentification_jour (jour, perimetre, canal, appelant_id, appelant, type, statut, motif,
+                                          authentifications)
+SELECT jour, perimetre, canal, appelant_id, appelant, type, statut, motif, authentifications
+FROM dm_authentification.fait_authentification_jour;
+SELECT pg_temp.synchroniser('bi.fait_authentification_jour', 'n_fait_authentification_jour', ARRAY['jour', 'appelant_id', 'type', 'statut', 'motif']);
+CREATE TEMP TABLE n_fait_demande_otp_jour (LIKE bi.fait_demande_otp_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_demande_otp_jour (jour, perimetre, canal, appelant_id, appelant, demandes, refusees)
+SELECT jour, perimetre, canal, appelant_id, appelant, demandes, refusees FROM dm_authentification.fait_demande_otp_jour;
+SELECT pg_temp.synchroniser('bi.fait_demande_otp_jour', 'n_fait_demande_otp_jour', ARRAY['jour', 'appelant_id']);
+CREATE TEMP TABLE n_fait_code_otp_jour (LIKE bi.fait_code_otp_jour INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_fait_code_otp_jour (jour, codes, utilises)
+SELECT jour, codes, utilises FROM dm_authentification.fait_code_otp_jour;
+SELECT pg_temp.synchroniser('bi.fait_code_otp_jour', 'n_fait_code_otp_jour', ARRAY['jour']);
+CREATE TEMP TABLE n_ref_motif_authentification (LIKE bi.ref_motif_authentification INCLUDING DEFAULTS) ON COMMIT DROP;
+INSERT INTO n_ref_motif_authentification (motif, libelle, ordre)
+SELECT motif, libelle, ordre FROM dm_authentification.ref_motif_authentification;
+SELECT pg_temp.synchroniser('bi.ref_motif_authentification', 'n_ref_motif_authentification', ARRAY['motif']);
+INSERT INTO bi.source_fraicheur (source, libelle, ordre, premiere_donnee, derniere_donnee, dernier_chargement)
+SELECT 'authentifications', 'Authentifications', 5, premiere_donnee, derniere_donnee, now()
+FROM dm_authentification.fraicheur_authentification
 WHERE derniere_donnee IS NOT NULL
 ON CONFLICT (source) DO UPDATE
    SET premiere_donnee    = excluded.premiere_donnee,

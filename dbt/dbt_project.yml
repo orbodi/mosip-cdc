@@ -49,6 +49,17 @@ models:
             execute 'grant usage on schema {{ this.schema }} to publisher_ro';
           end if;
         end $$
+    dm_authentification:
+      +schema: dm_authentification
+      +materialized: table
+      +grants: {select: ['publisher_ro']}
+      # Usage du schéma pour la publication : comme dm_enrolement ci-dessous.
+      +post-hook: >-
+        do $$ begin
+          if not has_schema_privilege('publisher_ro', '{{ this.schema }}', 'USAGE') then
+            execute 'grant usage on schema {{ this.schema }} to publisher_ro';
+          end if;
+        end $$
     dm_enrolement:
       +schema: dm_enrolement
       +materialized: table
@@ -85,3 +96,9 @@ seeds:
       +column_types: {delivery_mode: text, mode: text, libelle: text}
     ref_impression_motifs_annulation:
       +column_types: {reason_code: text, motif: text, libelle: text}
+    ref_ida_appelants:
+      +column_types: {requested_entity_id: text, perimetre: text, canal: text, appelant: text}
+    ref_ida_modalites:
+      +column_types: {code: text, famille: text, libelle: text}
+    ref_ida_motifs:
+      +column_types: {motif: text, libelle: text, message: text, regle: text, priorite: integer}

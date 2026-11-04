@@ -1,0 +1,8 @@
+code,famille,libelle
+FINGERPRINT-AUTH,biometrique,Empreinte
+IRIS-AUTH,biometrique,Iris
+FACE-AUTH,biometrique,Visage
+OTP-AUTH,otp,Code à usage unique
+DEMO-AUTH,demographique,Données démographiques
+KYC-AUTH,usage,eKYC (usage : pas une modalité)
+OTP-REQUEST,demande_otp,Demande de code OTP (pas une authentification)

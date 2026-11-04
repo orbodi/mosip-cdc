@@ -84,3 +84,44 @@ seeds:
       - name: ordre
         data_tests:
           - not_null
+
+  # Authentifications (lot 9, relevé du 03/11/2026 : docs/releve-authentification.md)
+  - name: ref_ida_appelants
+    columns:
+      - name: requested_entity_id
+        data_tests:
+          - unique
+          - not_null
+      - name: perimetre
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['usagers', 'paquets']
+      - name: canal
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['partenaire', 'portail', 'ussd', 'paquets']
+
+  - name: ref_ida_modalites
+    columns:
+      - name: code
+        data_tests:
+          - unique
+          - not_null
+      - name: famille
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['biometrique', 'otp', 'demographique', 'usage', 'demande_otp']
+
+  - name: ref_ida_motifs
+    columns:
+      - name: motif
+        data_tests:
+          - unique
+          - not_null
+      - name: priorite
+        data_tests:
+          - unique
+          - not_null
