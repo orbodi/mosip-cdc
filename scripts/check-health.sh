@@ -14,7 +14,8 @@ for c in mosip-prereg-cdc lake-prereg ods-prereg lake-enrichissement ods-enrichi
          mosip-master-cdc lake-master mosip-regprc-cdc ods-regprc-registration ods-regprc-rid-uin-link \
          ods-regprc-registration-list lake-regprc-rid-uin-link \
          mosip-regprc-impression-cdc ods-regprc-printing-orders ods-regprc-printing-shipped-cards \
-         lake-regprc-printing-orders-details lake-regprc-enrichissement ods-regprc-enrichissement; do
+         lake-regprc-printing-orders-details lake-regprc-enrichissement ods-regprc-enrichissement \
+         mosip-ida-cdc ods-ida-auth-transaction ods-ida-otp-transaction; do
   etat=$(curl -s --max-time 10 "http://localhost:8083/connectors/$c/status" \
     | jq -r '([.connector.state] + [.tasks[].state]) | unique | join(",")' 2>/dev/null)
   [ "$etat" = "RUNNING" ] || alerte "connecteur $c : ${etat:-injoignable}"
@@ -66,10 +67,18 @@ i=$(PGPASSWORD="$PUBLISHER_PASSWORD" psql -h "$TRAITEMENT_PG_HOST" -U publisher 
    WHERE EXISTS (SELECT 1 FROM ods.regprc_printing_orders)" 2>/dev/null)
 [ -z "$i" ] || [ "$i" -lt 1440 ] || alerte "ODS de l'impression : dernier changement reçu il y a $i min (attendu : moins de 1440)"
 
+# 2d. Capture des authentifications (lot 9) : âge du dernier changement reçu dans l'ODS. Le traitement des paquets en
+#     écrit en continu (≈ 5 900 par jour, relevé du 03/11/2026) : seuil d'un jour, comme l'impression. Contrôlé dès que
+#     la table a des lignes.
+a=$(PGPASSWORD="$PUBLISHER_PASSWORD" psql -h "$TRAITEMENT_PG_HOST" -U publisher -d mosip_bi -Atq -c \
+  "SELECT (extract(epoch FROM now() - to_timestamp(max(__source_ts_ms) / 1000.0)) / 60)::int
+   FROM ods.ida_auth_transaction HAVING count(*) > 0" 2>/dev/null)
+[ -z "$a" ] || [ "$a" -lt 1440 ] || alerte "ODS des authentifications : dernier changement reçu il y a $a min (attendu : moins de 1440)"
+
 # 3. Retard des slots de réplication sur MOSIP, si l'accès est renseigné dans compose/.env (base : slot)
 if [ -n "${MOSIP_PG_HOST:-}" ] && [ -n "${MOSIP_PG_PASSWORD:-}" ]; then
   for base_slot in mosip_prereg:mosip_applicant_cdc mosip_master:mosip_master_cdc mosip_regprc:mosip_regprc_cdc \
-                   mosip_regprc:mosip_regprc_impression_cdc; do
+                   mosip_regprc:mosip_regprc_impression_cdc mosip_ida:mosip_ida_cdc; do
     base=${base_slot%%:*}; slot=${base_slot#*:}
     r=$(PGPASSWORD="$MOSIP_PG_PASSWORD" psql -h "$MOSIP_PG_HOST" -U eidreporting -d "$base" -Atq -c \
       "SELECT (pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) / 1048576)::int

@@ -59,6 +59,15 @@ $K --create --if-not-exists --topic mosip.regprc.printing_orders_details \
 $K --create --if-not-exists --topic __debezium-heartbeat.mosip_regprc_impression \
    --partitions 1 --replication-factor 1 --config cleanup.policy=compact
 
+# Authentifications (connecteur mosip-ida-cdc, lot 9, 04/11/2026), une partition par topic, compactés : dernier état
+# de chaque authentification et de chaque code OTP, l'ODS se reconstruit depuis le topic.
+$K --create --if-not-exists --topic mosip.ida.auth_transaction \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.compaction.lag.ms=86400000
+$K --create --if-not-exists --topic mosip.ida.otp_transaction \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact --config min.compaction.lag.ms=86400000
+$K --create --if-not-exists --topic __debezium-heartbeat.mosip_ida \
+   --partitions 1 --replication-factor 1 --config cleanup.policy=compact
+
 $K --describe --topic mosip.prereg.enrichissement
 $K --describe --topic mosip.prereg.enrichissement.erreurs
 $K --describe --topic mosip.regprc.registration
@@ -72,3 +81,6 @@ $K --describe --topic mosip.regprc.printing_orders
 $K --describe --topic mosip.regprc.printing_shipped_cards
 $K --describe --topic mosip.regprc.printing_orders_details
 $K --describe --topic __debezium-heartbeat.mosip_regprc_impression
+$K --describe --topic mosip.ida.auth_transaction
+$K --describe --topic mosip.ida.otp_transaction
+$K --describe --topic __debezium-heartbeat.mosip_ida

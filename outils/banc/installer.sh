@@ -88,7 +88,7 @@ en ods_writer -c "create table ods.applicant_demographic (prereg_id text primary
                   cr_dtimes timestamp, upd_dtimes timestamp);
                   grant select on ods.applicant_demographic to publisher"
 en ods_writer -f "$CDC/sql/traitement/14_ods_regprc.sql" -f "$CDC/sql/traitement/20_ods_regprc_enrichissement.sql" \
-  -f "$CDC/sql/traitement/21_ods_regprc_impression.sql"
+  -f "$CDC/sql/traitement/21_ods_regprc_impression.sql" -f "$CDC/sql/traitement/25_ods_ida.sql"
 
 # Premier passage dbt (crée dwh et dm_*), droits supposés existants sur dwh et dm_preinscription, tables ref / ind
 bash "$(dirname "$0")/passage.sh" --sans-publication || true
