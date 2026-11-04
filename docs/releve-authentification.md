@@ -21,8 +21,10 @@ de la personne), `request_signature`, `response_signature`, `request_trn_id` ; `
 
 **Volume par mois** (index de `cr_dtimes`) : 3 250 928 transactions de novembre 2023 au 03/11/2026. Quelques essais
 avant décembre 2024, puis des vagues : décembre 2024 à février 2025 (≈ 761 000), avril 2026 (≈ 439 000), septembre
-2026 (≈ 518 000) ; ≈ 5 000 par jour début novembre 2026. Les 510 499 de l'ancien BI ne correspondent à aucun cumul
-(1,4 M à la mi-janvier 2026) : non reproduits.
+2026 (≈ 518 000) ; ≈ 5 000 par jour début novembre 2026. Les 510 499 de l'ancien BI (42,3 % réussies, au 14/01/2026)
+correspondent aux **usagers seulement** : au même jour, 492 493 requêtes d'usagers dont 40,2 % réussies (contrôle du
+04/11/2026, après publication) ; l'écart de 18 006 n'est pas reproduit exactement, pas même avec les demandes de code
+OTP (31 471).
 
 **30 derniers jours** (au 03/11/2026, 177 510 transactions) :
 
