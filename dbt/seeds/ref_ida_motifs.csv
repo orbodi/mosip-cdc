@@ -1,8 +1,14 @@
 motif,libelle,message,regle,priorite
 BIO_ABSENTE,Biométrie absente du dossier d'authentification,IDA-BIA-006 Biometric data … not available in database,Biometric data .* not available in database,10
+ERREUR_TECHNIQUE,Requête non traitée par IDA (erreur technique),IDA-MLC Request could not be processed. Please try again,Request could not be processed,15
 NIU_ABSENT,NIU absent de la base d'authentification,IDA-MLC-018 UIN not available in database,UIN not available in database,20
+NIU_INVALIDE,NIU invalide,IDA-MLC Invalid UIN,Invalid UIN,25
 MODALITE_VERROUILLEE,Modalité verrouillée par le résident,IDA-MLC-019 … Auth Type is Locked for the UIN,Auth Type is Locked,30
+DELAI_DEPASSE,Requête reçue hors délai,IDA-MLC Request to be received at MOSIP within ## minutes,Request to be received at MOSIP within,35
 IDENTIFIANT_NON_CONFIGURE,Type d'identifiant non configuré,IDA-MLC-015 Identity Type - … not configured for the country,not configured for the country,40
+REQUETE_INCOMPLETE,Requête incomplète ou paramètre invalide,IDA-MLC Missing / Invalid Input Parameter … ; Missing demo auth attribute ; IDA-OTA OTP Notification Channel not provided,Missing Input Parameter|Invalid Input Parameter|Missing demo auth attribute|Notification Channel not provided,45
 SANS_MODE,Aucun mode d'authentification demandé,IDA-MLC-008 No authentication type selected,No authentication type selected,50
+OTP_EXPIRE,Code OTP expiré ou sans demande correspondante,IDA-OTA OTP has expired ; Input transactionID does not match transactionID of OTP Request,OTP has expired|does not match transactionID of OTP Request,55
 OTP_REFUSE,Code OTP ou eKYC refusé,OTP Authentication Failed ; KYC Authentication Request;OTP Authentication;… Failed,(OTP|KYC)[^;]*Authentication.*Failed,60
 BIO_NON_CONCORDANTE,Biométrie non concordante,Finger / Iris / Face Authentication … Failed (seules ou combinées),(Finger|Iris|Face)\s+Authentication.*Failed,70
+DEMO_NON_CONCORDANTE,Données démographiques non concordantes,Demo Authentication Failed,Demo Authentication Failed,75

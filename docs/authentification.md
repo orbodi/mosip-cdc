@@ -135,3 +135,24 @@ L'ordre compte (V15 et V16 : incidents du 02 et du 03/11/2026).
 
 Retour arrière : revenir au commit précédent de `mosip-cdc` (la publication n'écrit plus les tables V17, qui restent en
 place) ; V17 est additive et n'a pas à être défaite.
+
+### Mises en service
+
+- **Lot 9a, 04/11/2026** (`39d8b14`) : `dbz_publication` de `mosip_ida` contenait déjà les deux tables (B2 sans objet) ;
+  droits sur les seules colonnes captées ; activité à toutes les heures (pas de battement de cœur). Snapshot lancé vers
+  10 h 00, fini vers 10 h 50 : 3 253 827 authentifications, 83 889 codes OTP. Contrôle sur une période close (05/10 au
+  03/11/2026) : 174 878 transactions dont 29 135 réussies, **identiques** dans MOSIP et dans l'ODS.
+- **Lot 9b, 04/11/2026** (`716ce49`, V17) : premier passage à 14 h 16, `dwh.authentification` classée en 69 s
+  (3 254 407 lignes). Deux alertes sur l'historique : un appelant interne inconnu (`mportal-service-client`, 133
+  transactions de 12/2024 à 11/2025, rangé en usagers, « Portail mobile ») et 16 messages non répertoriés, rangés en
+  six nouveaux motifs (erreur technique d'IDA, requête incomplète, NIU invalide, code OTP expiré, requête hors délai,
+  données démographiques non concordantes). À signaler à l'ANID : **179 727 vérifications du traitement des paquets
+  en erreur technique d'IDA** (« Request could not be processed »), de 12/2023 au 08/07/2026, plus aucune depuis.
+
+**Reclasser après un changement de seed** (dans `compose/`, sous le verrou de la chaîne analytique) :
+```bash
+flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull
+flock /tmp/mosip-analytique.lock docker compose run --rm -T dbt seed --full-refresh --select ref_ida_motifs ref_ida_appelants ref_ida_modalites
+flock /tmp/mosip-analytique.lock docker compose run --rm -T dbt build --full-refresh --select authentification+
+```
+puis le passage suivant du cron publie les tables reclassées.

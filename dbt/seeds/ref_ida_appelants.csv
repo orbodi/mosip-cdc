@@ -1,4 +1,5 @@
 requested_entity_id,perimetre,canal,appelant
 mosip-regproc-client,paquets,paquets,Traitement des paquets
 mosip-resident-client,usagers,portail,Portail du résident
+mportal-service-client,usagers,portail,Portail mobile
 ussd-client,usagers,ussd,USSD
