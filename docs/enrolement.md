@@ -77,7 +77,7 @@ Profil des NIU (lot 6) : rid_uin_link (lien créé) ─→ Spark ─→ ID Repos
 
 | Modèle `dm_enrolement` | Publié dans | Indicateurs |
 |---|---|---|
-| `fait_enrolement_jour` | `bi.fait_enrolement_jour` | I1, I2 cohorte, I4, reprocessing (V13), types de demande |
+| `fait_enrolement_jour` | `bi.fait_enrolement_jour` | I1, I2 cohorte, I4, reprocessing (V13), types de demande, profil (sexe, tranche d'âge, nationalité : V18) |
 | `fait_niu_jour` | `bi.fait_niu_jour` | I2 flux, I3 |
 | `fait_arret_etape_jour` | `bi.fait_arret_etape_jour` (V7) | I5, I6 |
 | `stock_en_cours` | `bi.stock_en_cours` (V7) | I7, « dont bloqués » |
@@ -96,8 +96,16 @@ tranche d'âge (années révolues au jour du NIU, d'après l'année et le mois d
 et nationalité (libellé de la liste MOSIP « nationality » si la valeur y est un code, sinon la valeur telle quelle).
 Un NIU pas encore enrichi compte en I, âge inconnu, « Non renseignée » : le total égale toujours les NIU générés.
 
+**Profil des inscriptions** (`fait_enrolement_jour`, lot E2 de l'Exploration, 07/11/2026) : mêmes règles de sexe et
+de nationalité, d'après le même enrichissement de l'ID Repository, sur les paquets reçus ; l'âge est pris **au jour de
+réception** (et non au jour du NIU). L'ID Repository n'est interrogé que pour les NIU générés : un dossier sans NIU
+(en cours, échoué, rejeté) compte en I, âge inconnu, « Non renseignée ». Les totaux par jour, centre et type ne
+changent pas ; les NIU par sexe et nationalité égalent ceux du profil des NIU
+(`assert_enrolement_profil_inscriptions_egal_niu`, bloquant).
+
 **Contrôles bloquants** (rien n'est publié en cas d'échec, pré-inscriptions comprises) : somme des devenirs =
-inscriptions ; reprocessing ≤ en cours (faits et stock par motif) ; reprocessing par motif = reprocessing du Devenir ; ODS = suivi = faits ; NIU flux = NIU cohorte ; profil des NIU = NIU générés, jour par jour ; étapes = Devenir ; motifs = Devenir ; histogrammes
+inscriptions ; reprocessing ≤ en cours (faits et stock par motif) ; reprocessing par motif = reprocessing du Devenir ; ODS = suivi = faits ; NIU flux = NIU cohorte ; profil des NIU = NIU générés, jour par jour ; profil des inscriptions = profil des NIU (sexe,
+nationalité) ; étapes = Devenir ; motifs = Devenir ; histogrammes
 complets ; codes uniques dans les seeds. L'unicité du RID n'est pas un test : clés primaires de l'ODS et index unique de
 `dwh.suivi_inscription` (un doublon fait échouer ce modèle ; allègement du 25/10/2026, un passage dbt de 88 s).
 **Alertes** : centre non référencé, statut ou étape inconnus, horodatage du RID illisible, `entry_date` modifiée,
@@ -261,6 +269,30 @@ migration V14 ; stock à l'instant, sans période). Même ordre de mise en servi
 redémarrage), puis `git pull` de `mosip-cdc` sous le verrou. Vérifier ensuite que
 `select sum(en_reprocessing) from bi.stock_en_cours_motif;` égale `select sum(en_reprocessing) from
 bi.fait_enrolement_jour;` (le test dbt l'impose).
+
+### Profil des inscriptions dans l'Exploration (lot E2, 07/11/2026)
+
+Filtres et ventilations Sexe, Tranche d'âge et Nationalité de l'onglet Enrôlement de l'Exploration, pour les
+Inscriptions et les NIU générés. `bi.fait_enrolement_jour` prend une colonne `nationalite` et passe d'environ
+102 000 à 671 000 lignes (relevé du 06/11/2026). L'ordre compte : la publication écrit `nationalite`, qui n'existe
+qu'après la migration V18, et la clé primaire doit déjà contenir sexe, tranche d'âge et nationalité.
+
+1. API (`mosip-bi-reporting`, branche `dashboard`) : tests, puis redémarrage. Flyway applique
+   `V18__profil_des_inscriptions.sql` (colonne « Non renseignée » par défaut, tranches d'âge des pré-inscriptions,
+   clé primaire élargie). L'ancienne publication continue de tourner : ses lignes restent en I, inconnu,
+   « Non renseignée ».
+2. **Sous le verrou de la chaîne analytique** : `git pull` de `mosip-cdc`
+   (`flock /tmp/mosip-analytique.lock git -C /data/mosip-cdc pull`). Au passage suivant, dbt reconstruit
+   `fait_enrolement_jour` avec l'enrichissement (même jointure que `fait_niu_profil_jour`) ; la première publication
+   réécrit la table (≈ 670 000 lignes, une fois), les suivantes seulement les lignes qui changent.
+3. Vérifier :
+   `select sum(inscriptions), sum(niu_generes) from bi.fait_enrolement_jour;` (inchangés) et
+   `select sexe, sum(niu_generes) from bi.fait_enrolement_jour group by 1;` (égal, par sexe, à
+   `bi.fait_niu_profil_jour`) ; journal `analytique.log` sans échec.
+
+Le profil se complète avec le rattrapage de l'ID Repository (45 % des NIU enrichis le 06/11/2026) : la part
+« Non renseignée » baisse à chaque passage. Retour arrière : revenir au commit précédent de `mosip-cdc` ; au passage
+suivant, la publication remet toutes les lignes en I, inconnu, « Non renseignée » (la colonne ne se retire pas).
 
 **Incident du 02/11/2026 (09 h 30 à 09 h 40) et correctif.** Entre l'application de V14 et le `git pull` du
 pipeline, toute la publication a échoué (« null value in column en_reprocessing of relation n_stock_en_cours_motif ») :

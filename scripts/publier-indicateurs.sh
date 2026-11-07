@@ -60,19 +60,20 @@ ON CONFLICT (source) DO UPDATE
    SET premiere_donnee    = excluded.premiere_donnee,
        derniere_donnee    = excluded.derniere_donnee,
        dernier_chargement = excluded.dernier_chargement;
--- Enrôlement (tables des migrations V1 à V3 du backend). Un code centre absent de bi.zone va sous « Centre non
+-- Enrôlement (tables des migrations V1 à V3 du backend ; nationalité : V18, à appliquer avant ce script). Un code centre absent de bi.zone va sous « Centre non
 -- référencé » (zone créée par V2) ; plusieurs codes inconnus s'y additionnent, d'où le regroupement.
 CREATE TEMP TABLE n_fait_enrolement_jour (LIKE bi.fait_enrolement_jour INCLUDING DEFAULTS) ON COMMIT DROP;
-INSERT INTO n_fait_enrolement_jour (jour, centre_id, sexe, tranche_age, type_demande, inscriptions, niu_generes,
-                                     en_cours, echouees, rejetees, non_classees, en_reprocessing)
-SELECT f.jour, coalesce(z.id, h.id), f.sexe, f.tranche_age, f.type_demande,
+INSERT INTO n_fait_enrolement_jour (jour, centre_id, sexe, tranche_age, type_demande, nationalite, inscriptions,
+                                     niu_generes, en_cours, echouees, rejetees, non_classees, en_reprocessing)
+SELECT f.jour, coalesce(z.id, h.id), f.sexe, f.tranche_age, f.type_demande, f.nationalite,
        sum(f.inscriptions), sum(f.niu_generes), sum(f.en_cours), sum(f.echouees), sum(f.rejetees),
        sum(f.non_classees), sum(f.en_reprocessing)
 FROM dm_enrolement.fait_enrolement_jour f
 CROSS JOIN (SELECT id FROM bi.zone WHERE code = 'CENTRE_NON_REFERENCE') h
 LEFT JOIN bi.zone z ON z.code = f.code_centre AND z.niveau = 'centre'
-GROUP BY 1, 2, 3, 4, 5;
-SELECT pg_temp.synchroniser('bi.fait_enrolement_jour', 'n_fait_enrolement_jour', ARRAY['jour', 'centre_id', 'sexe', 'tranche_age', 'type_demande']);
+GROUP BY 1, 2, 3, 4, 5, 6;
+SELECT pg_temp.synchroniser('bi.fait_enrolement_jour', 'n_fait_enrolement_jour',
+                            ARRAY['jour', 'centre_id', 'sexe', 'tranche_age', 'type_demande', 'nationalite']);
 CREATE TEMP TABLE n_fait_niu_jour (LIKE bi.fait_niu_jour INCLUDING DEFAULTS) ON COMMIT DROP;
 INSERT INTO n_fait_niu_jour (jour, centre_id, type_demande, niu_generes)
 SELECT f.jour, coalesce(z.id, h.id), f.type_demande, sum(f.niu_generes)

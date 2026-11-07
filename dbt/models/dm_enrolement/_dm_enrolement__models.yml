@@ -2,7 +2,10 @@ version: 2
 
 models:
   - name: fait_enrolement_jour
-    description: "Contrat bi.fait_enrolement_jour : paquets reçus par jour de réception, centre et type (cohorte, I4)."
+    description: >
+      Contrat bi.fait_enrolement_jour : paquets reçus par jour de réception, centre, type, sexe, tranche d'âge (au
+      jour de réception) et nationalité (cohorte, I4). Profil connu pour les NIU enrichis par l'ID Repository ;
+      mêmes NIU par sexe et nationalité que fait_niu_profil_jour (test assert_enrolement_profil_inscriptions_egal_niu).
     columns:
       - name: jour
         data_tests:
@@ -11,6 +14,19 @@ models:
         data_tests:
           - not_null
       - name: type_demande
+        data_tests:
+          - not_null
+      - name: sexe
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['F', 'H', 'I']
+      - name: tranche_age
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['0-5', '6-14', '15-18', '19-25', '26-35', '36-45', '46-60', '60+', 'inconnu']
+      - name: nationalite
         data_tests:
           - not_null
       - name: inscriptions

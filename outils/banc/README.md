@@ -1,7 +1,7 @@
 # Banc de test de la chaîne enrôlement
 
 Ce banc vérifie les modèles dbt de l'enrôlement et la publication vers `bi` sur un PostgreSQL local jetable, sans
-Kafka ni MOSIP. Il utilise les vraies migrations du backend (V1 à V15), les vrais scripts SQL de droits et le vrai
+Kafka ni MOSIP. Il utilise les vraies migrations du backend (V1 à V18), les vrais scripts SQL de droits et le vrai
 `scripts/publier-indicateurs.sh`.
 
 `minidbt.py` est un remplaçant minimal de dbt (Jinja, `ref`, `source`, `is_incremental`, `this`, seeds, index, grants,
@@ -74,6 +74,11 @@ Kafka croissant, et ajout dans le journal du lake de `rid_uin_link`. La clé du 
   H 15-18. `bi.fait_niu_nationalite_jour` : Togo (code TOGO de la liste « nationality »), Non renseignée, BENIN
   (absent de la liste, gardé tel quel). R7 (enrichi, sans NIU) n'y figure pas. La requête du rattrapage
   (`spark/commun/sources.py`, source `inscriptions`), lancée par `spark_reader`, ne rend que le RID de R4.
+- **Profil des inscriptions** (lot E2, 07/11/2026) : `bi.fait_enrolement_jour` a 8 lignes, mêmes totaux par jour,
+  centre et type ; profil au jour de réception : 01/10 F 36-45 Togo (R1), 04/07 H 15-18 BENIN (R2, né en 2010 sans
+  mois), 24/10 LOST I 46-60 Togo (R7, enrichi sans NIU : compte dans les inscriptions, pas dans les NIU) ; les autres
+  en I, inconnu, « Non renseignée ». NIU par sexe et nationalité = `bi.fait_niu_profil_jour`
+  (`assert_enrolement_profil_inscriptions_egal_niu`). Passage suivant et `--full-refresh` : 0 ligne réécrite.
 - **Suivi d'un dossier** : 11 lignes dans `bi.suivi_dossier`, retrouvées par
   `hmac('<RID>', 'cle-du-banc', 'sha256')`, jamais avec une autre clé ; 6 avec un motif (29/10/2026 : rejetés
   REFUS_SUPERVISEUR et DOUBLON_ABIS, échoué IRIS_NON_CONCORDANT, en cours RECU_EN_ATTENTE et AUTRE, non classé AUTRE),
