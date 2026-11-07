@@ -233,8 +233,8 @@ laissées vides ou absentes, ce sont celles de `API_*` qui servent. Ne jamais le
    point de reprise : il repart où il s'était arrêté). Journal : `docker logs -f mosip-cdc-spark-inscriptions`
    (une ligne par lot : dossiers, enrichis, échecs).
 10. Cron : copier `ops/cron/mosip-bi` dans `/etc/cron.d/mosip-bi`. Le rattrapage des NIU passe après celui des
-    pré-inscriptions, dans les mêmes créneaux et sous le même verrou (environ 6 M de NIU : 4 à 5 jours aux débits de
-    32 et 8 appels/s).
+    pré-inscriptions, dans les mêmes créneaux (environ 6 M de NIU ; créneaux et débits revus le 07/11/2026, voir
+    « Créneaux du rattrapage » plus bas).
 11. Vérifier : `bi.fait_niu_profil_jour` et `bi.fait_niu_nationalite_jour` totalisent les NIU de `bi.fait_niu_jour`
     (le test dbt l'impose) ; la part « Non renseignée » baisse à chaque créneau ; les valeurs de nationalité
     (`select nationalite, sum(niu_generes) from bi.fait_niu_nationalite_jour group by 1 order by 2 desc;`) sont des
@@ -293,6 +293,32 @@ qu'après la migration V18, et la clé primaire doit déjà contenir sexe, tranc
 Le profil se complète avec le rattrapage de l'ID Repository (45 % des NIU enrichis le 06/11/2026) : la part
 « Non renseignée » baisse à chaque passage. Retour arrière : revenir au commit précédent de `mosip-cdc` ; au passage
 suivant, la publication remet toutes les lignes en I, inconnu, « Non renseignée » (la colonne ne se retire pas).
+
+### Créneaux du rattrapage (07/11/2026)
+
+Constat (`rattrapage.log`, 01 au 07/11/2026) : 4 créneaux de nuit sur 6 n'ont pas tourné, dont les trois derniers.
+Le créneau de jour s'arrête à son heure de fin après le paquet en cours, donc jusqu'à 12 minutes plus tard (20 h 03 à
+20 h 11) ; la nuit démarrait à 20 h 05 avec `flock -n` sur le même verrou et abandonnait sans rien écrire. Débits
+réels des inscriptions : jour 1,3 à 4,9 appels/s (8 au maximum), nuit 6,6 et 12,3 appels/s (32 au maximum,
+16 simultanés : l'ID Repository répond en 1 à 2,5 s). Restaient 3 387 614 NIU sans profil le 07/11 à 5 h.
+
+Décision du responsable : la nuit démarre même si le jour finit encore son dernier paquet ; nuit plus rapide ; jour
+6 h 30 - 19 h 30, nuit 20 h - 6 h. Dans `ops/cron/mosip-bi` :
+
+- un verrou par créneau (`/tmp/mosip-rattrapage-jour.lock`, `/tmp/mosip-rattrapage-nuit.lock`) : `flock -n` n'empêche
+  plus que deux lancements du même créneau. Un chevauchement jour-nuit (rare : 30 minutes d'écart pour un débordement
+  observé de 12 minutes au plus) ne fait qu'appeler deux fois l'ID Repository pour quelques dossiers, sans effet sur les
+  chiffres (dernière réponse gardée) ;
+- nuit des inscriptions : 64 appels/s au maximum, 32 simultanés (au lieu de 32 et 16 ; pool HTTP du client : 64
+  connexions). La pause de 5 minutes au-delà de 10 % d'échecs temporaires, et l'arrêt après 3 paquets mauvais
+  d'affilée, protègent l'ID Repository s'il ne suit pas ;
+- pré-inscriptions : mêmes créneaux, mêmes débits (il ne reste presque rien à rattraper).
+
+Mise en service : `git pull` de `mosip-cdc`, puis `cp /data/mosip-cdc/ops/cron/mosip-bi /etc/cron.d/mosip-bi` (cron
+relit le fichier seul). Le lancement de jour en cours garde l'ancien verrou et son heure de fin. Vérifier le lendemain
+matin : `grep -E "début \(inscriptions\)|fin :|en difficulté" /var/log/mosip-bi/rattrapage.log | tail` (un
+`début (inscriptions)` vers 20 h, un `fin :` vers 6 h avec le débit de la nuit). Si l'ID Repository montre des signes de
+difficulté (lignes « en difficulté », échecs en hausse), revenir à `--debit 32 --simultanes 16`.
 
 **Incident du 02/11/2026 (09 h 30 à 09 h 40) et correctif.** Entre l'application de V14 et le `git pull` du
 pipeline, toute la publication a échoué (« null value in column en_reprocessing of relation n_stock_en_cours_motif ») :

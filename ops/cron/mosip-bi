@@ -17,12 +17,15 @@ L=/var/log/mosip-bi
 # Contrôle de santé, toutes les 5 minutes (alertes dans $L/alertes.log)
 */5 * * * *   root  $B/scripts/check-health.sh
 
-# Rattrapage de l'enrichissement du stock : nuit 20 h 05 - 5 h à 32 appels/s, jour 5 h 05 - 20 h à 8 appels/s.
-# Chaque lancement s'arrête à son heure de fin ; le suivant reprend les dossiers encore sans réponse.
-# Les pré-inscriptions d'abord, puis, dans le même créneau et sous le même verrou, les inscriptions qui ont un NIU
-# (ID Repository, lot 6) : jamais deux rattrapages en même temps sur la passerelle MOSIP.
-5 20 * * *    root  cd $B/compose && flock -n /tmp/mosip-rattrapage.lock bash -c 'docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[4] --driver-memory 2g /app/jobs/rattrapage_stock.py --debit 32 --simultanes 16 --fin 05:00; docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[4] --driver-memory 2g /app/jobs/rattrapage_stock.py --source inscriptions --debit 32 --simultanes 16 --fin 05:00' >> $L/rattrapage.log 2>&1
-5 5 * * *     root  cd $B/compose && flock -n /tmp/mosip-rattrapage.lock bash -c 'docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[2] --driver-memory 2g /app/jobs/rattrapage_stock.py --debit 8 --simultanes 4 --fin 20:00; docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[2] --driver-memory 2g /app/jobs/rattrapage_stock.py --source inscriptions --debit 8 --simultanes 4 --fin 20:00' >> $L/rattrapage.log 2>&1
+# Rattrapage de l'enrichissement du stock (07/11/2026) : nuit 20 h - 6 h (ID Repository : 64 appels/s, 32 simultanés),
+# jour 6 h 30 - 19 h 30 (8 appels/s). Chaque lancement s'arrête à son heure de fin, après le paquet en cours ; le
+# suivant reprend les dossiers encore sans réponse. Les pré-inscriptions d'abord, puis, dans le même créneau, les
+# inscriptions qui ont un NIU (ID Repository, lot 6).
+# Un verrou par créneau : la nuit démarre même si le jour finit encore son dernier paquet (avec un seul verrou et
+# flock -n, la nuit était abandonnée sans trace dès que le jour débordait après 20 h 05 : 4 nuits perdues sur 6 du 01
+# au 06/11/2026). Un éventuel chevauchement ne fait qu'appeler deux fois l'API pour quelques dossiers.
+0 20 * * *    root  cd $B/compose && flock -n /tmp/mosip-rattrapage-nuit.lock bash -c 'docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[4] --driver-memory 2g /app/jobs/rattrapage_stock.py --debit 32 --simultanes 16 --fin 06:00; docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[4] --driver-memory 2g /app/jobs/rattrapage_stock.py --source inscriptions --debit 64 --simultanes 32 --fin 06:00' >> $L/rattrapage.log 2>&1
+30 6 * * *    root  cd $B/compose && flock -n /tmp/mosip-rattrapage-jour.lock bash -c 'docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[2] --driver-memory 2g /app/jobs/rattrapage_stock.py --debit 8 --simultanes 4 --fin 19:30; docker compose run --rm -T spark-batch /opt/spark/bin/spark-submit --master local[2] --driver-memory 2g /app/jobs/rattrapage_stock.py --source inscriptions --debit 8 --simultanes 4 --fin 19:30' >> $L/rattrapage.log 2>&1
 
 # Fraîcheur des données capturées, toutes les heures
 5 * * * *     root  cd $B/compose && docker compose run --rm -T dbt source freshness >> $L/freshness.log 2>&1
